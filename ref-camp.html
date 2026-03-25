@@ -666,6 +666,10 @@ function lookupRef() {
 
 function evalCard(e) {
   var dots=function(v){return [1,2,3,4,5].map(function(i){return '<div class="dot'+(i<=v?' on':'')+'"></div>';}).join('');};
+  var email = e.refEmail || C.refEmails[e.refName] || '';
+  var emailBtn = email
+    ? '<button onclick="resendEmail(\''+e.id+'\')" style="margin:12px 18px 14px;width:calc(100% - 36px);padding:10px;background:var(--orange);border:none;border-radius:var(--radius-sm);color:#fff;font-family:\'Bebas Neue\',sans-serif;font-size:16px;letter-spacing:0.06em;cursor:pointer;">✉️ Resend Email to '+esc(e.refName)+'</button>'
+    : '<div style="margin:10px 18px;font-size:11px;color:var(--gray-text);font-style:italic;">No email on file — add email in Setup to enable resend.</div>';
   return '<div class="edc">'+
     '<div class="edh">'+
       '<div><div class="edh-cl">'+esc(e.clinician)+'</div>'+
@@ -678,7 +682,36 @@ function evalCard(e) {
         '<div class="esc-dots">'+dots(e.scores[cat]||0)+'</div></div>';
     }).join('')+'</div>'+
     (e.feedback?'<div class="en">'+esc(e.feedback)+'</div>':'')+
+    emailBtn+
   '</div>';
+}
+
+function resendEmail(evalId) {
+  if(!C.sheetsUrl){showToast('Connect to Google Sheets in Setup first.');return;}
+  var ev = EVS.filter(function(e){return String(e.id)===String(evalId);})[0];
+  if(!ev){showToast('Eval not found.');return;}
+  var email = ev.refEmail || C.refEmails[ev.refName] || '';
+  if(!email){showToast('No email on file for this ref.');return;}
+  // Make sure email is attached
+  ev.refEmail = email;
+  var allRef = EVS.filter(function(e){return e.refName===ev.refName;});
+  showToast('⏳ Resending email to '+ev.refName+'...',3000);
+  var cbName = 'gsResend_'+Date.now();
+  var data = encodeURIComponent(JSON.stringify({
+    action:'addEval', eval:ev, allRefEvals:allRef
+  }));
+  var url = C.sheetsUrl+'?action=addEval&data='+data+'&callback='+cbName;
+  window[cbName]=function(result){
+    delete window[cbName];
+    var s=document.getElementById('j-'+cbName);if(s)s.remove();
+    if(result&&result.ok) showToast('✅ Email resent to '+ev.refName+'!',3000);
+    else showToast('⚠️ Could not resend — check connection.',3000);
+  };
+  var sc=document.createElement('script');
+  sc.id='j-'+cbName;
+  sc.src=url;
+  sc.onerror=function(){delete window[cbName];var s=document.getElementById('j-'+cbName);if(s)s.remove();showToast('❌ Resend failed.');};
+  document.head.appendChild(sc);
 }
 
 // ── RANKINGS ───────────────────────────────────
