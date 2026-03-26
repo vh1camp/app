@@ -157,12 +157,22 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .setup-info{background:var(--black);color:#fff;border-radius:var(--radius);padding:18px;margin-bottom:16px;border-left:4px solid var(--orange);}
 .setup-info h3{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.06em;margin-bottom:8px;color:var(--orange);}
 .setup-info ol{padding-left:18px;font-size:13px;line-height:2;color:rgba(255,255,255,0.8);}
+.sync-banner{background:var(--orange-dim);border:1px solid var(--orange-border);border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;color:var(--orange);margin-bottom:14px;display:none;}
+.sync-banner.show{display:flex;align-items:center;gap:10px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:18px;height:18px;border:3px solid var(--orange-border);border-top-color:var(--orange);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;}
 @media(max-width:480px){.screen{padding:12px;}.nav-tab{font-size:10px;padding:12px 4px;}.sbn{height:40px;}.esg{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
 
 <div id="toast" class="toast"></div>
+
+<!-- Sync banner shown while loading from Sheets -->
+<div class="sync-banner" id="sync-banner">
+  <div class="spinner"></div>
+  <span id="sync-txt">Syncing from Google Sheets...</span>
+</div>
 
 <div class="pin-ov" id="pinOv">
   <div class="pin-box">
@@ -178,7 +188,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="header-zebra"></div>
   <div class="header-inner">
     <div class="header-left">
-      <div class="whistle" style="background:var(--orange);font-size:22px;">🏀</div>
+      <div class="whistle">🏀</div>
       <div><div class="app-title" id="campName">Officials Camp</div><div class="app-sub">Evaluation System</div></div>
     </div>
     <div class="hdr-badge" id="campYear">2025</div>
@@ -199,6 +209,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="card">
       <div class="card-hdr"><span class="ci">📋</span><span class="ct">Start Evaluation</span></div>
       <div class="card-body">
+        <div id="no-clin-msg" style="display:none;background:var(--orange-dim);border:1px solid var(--orange-border);border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;color:var(--orange);margin-bottom:16px;">
+          ⚠️ No clinicians loaded. <strong>Go to Setup → Clinicians</strong> and add names, then save to Google Sheets.
+        </div>
         <div class="field"><label class="flabel">Your Name (Clinician)</label>
           <select id="sel-clin" onchange="chkS1()"><option value="">— Select your name —</option></select></div>
         <div class="field"><label class="flabel">Day</label>
@@ -222,14 +235,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
             <option>Game 7 — 4:00 PM</option><option>Game 8 — 5:00 PM</option>
             <option>Game 9 — 6:00 PM</option><option>Game 10 — 7:00 PM</option>
           </select></div>
-        <!-- FIX: Next button is always rendered but hidden via visibility+height, not display:none -->
-        <!-- This prevents mobile browsers from missing the element on first paint -->
         <div id="s1-btn" style="display:none;">
           <button class="btn btn-p" onclick="goS2()">Select Official to Evaluate →</button>
-        </div>
-        <!-- Mobile fallback message shown when no clinicians loaded -->
-        <div id="no-clin-msg" style="display:none;background:var(--orange-dim);border:1px solid var(--orange-border);border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;color:var(--orange);margin-top:4px;">
-          ⚠️ No clinicians loaded yet. Go to <strong>Setup → Clinicians</strong> and add your name first.
         </div>
       </div>
     </div>
@@ -276,17 +283,17 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 <!-- MY EVALS -->
 <div class="screen" id="screen-refs">
   <div class="card">
-    <div class="card-hdr"><span class="ci">🔍</span><span class="ct">Look Up Your Evaluations</span></div>
+    <div class="card-hdr"><span class="ci">🔍</span><span class="ct">Look Up Evaluations</span></div>
     <div class="card-body">
-      <div class="field"><label class="flabel">Your Name</label>
-        <select id="ref-lkp" onchange="lookupRef()"><option value="">— Select your name —</option></select></div>
+      <div class="field"><label class="flabel">Official Name</label>
+        <select id="ref-lkp" onchange="lookupRef()"><option value="">— Select name —</option></select></div>
     </div>
   </div>
   <div id="ref-res" style="display:none;">
     <div class="stat-strip" id="ref-stats"></div>
     <div style="display:flex;align-items:center;gap:10px;margin:20px 0 14px;">
       <div style="flex:1;height:2px;background:var(--black);"></div>
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:0.08em;">Your Evaluations</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:0.08em;">Evaluations</div>
       <div style="flex:1;height:2px;background:var(--black);"></div>
     </div>
     <div id="ref-cards"></div>
@@ -318,14 +325,17 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 <!-- SETUP -->
 <div class="screen" id="screen-setup">
   <div class="setup-info">
-    <h3>🔧 Google Sheets — 5 Steps</h3>
+    <h3>🔧 One-Time Setup — 5 Steps</h3>
     <ol>
       <li>Open your Google Sheet → Extensions → Apps Script</li>
-      <li>Delete existing code → paste the script below → Ctrl+S to save</li>
+      <li>Delete existing code → paste the script below → Save (Ctrl+S)</li>
       <li>Deploy → New Deployment → Web App → Execute as: Me → Who has access: Anyone</li>
-      <li>Authorize when prompted → Review Permissions → Advanced → Allow</li>
-      <li>Copy the /exec URL → paste in Connection → Test Connection</li>
+      <li>Authorize → Advanced → Allow</li>
+      <li>Copy the /exec URL → paste below → Test Connection</li>
     </ol>
+    <div style="margin-top:10px;padding:10px;background:rgba(244,120,32,0.15);border-radius:6px;font-size:12px;color:rgba(255,255,255,0.9);">
+      ✅ <strong>Once connected, all devices sync automatically.</strong> Add clinicians &amp; refs here on PC — mobile picks them up on next open.
+    </div>
   </div>
 
   <div class="card">
@@ -352,7 +362,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div id="conn-res" style="display:none;margin-top:12px;border-radius:6px;padding:12px 14px;font-size:13px;line-height:1.7;"></div>
       <div style="background:#fff8f0;border:1px solid var(--orange);border-left:4px solid var(--orange);border-radius:6px;padding:12px 14px;margin-top:14px;font-size:12px;line-height:1.7;">
         ⚠️ <strong>Must be hosted</strong> — not opened as a local file.
-        Drop on <a href="https://netlify.com/drop" target="_blank" style="color:var(--orange);font-weight:700;">netlify.com/drop</a> (free, no account needed).
+        Drop on <a href="https://netlify.com/drop" target="_blank" style="color:var(--orange);font-weight:700;">netlify.com/drop</a> or use GitHub Pages.
       </div>
     </div>
   </div>
@@ -361,12 +371,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="card-hdr"><span class="ci">👤</span><span class="ct">Referees / Campers</span><span class="cs" id="refs-badge">0 loaded</span></div>
     <div class="card-body">
       <div style="background:#f8f8f8;border:2px dashed var(--gray2);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px;">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--gray-text);margin-bottom:6px;">📋 Paste Name + Email from Google Sheets</div>
-        <div style="font-size:11px;color:var(--gray-text);margin-bottom:8px;line-height:1.6;">
-          Copy two columns (Name, Email) from your sheet. Tab or comma separated. Email optional per row.
-        </div>
-        <div style="background:var(--black);border-radius:4px;padding:8px 12px;font-family:monospace;font-size:11px;color:#aaffaa;margin-bottom:10px;line-height:2;">Jack Johnson, jack@gmail.com<br>Jordan Gregory, jordan@gmail.com<br>Cade Hadley</div>
-        <textarea id="refs-paste" placeholder="Paste Name, Email rows here..." style="min-height:110px;font-family:monospace;font-size:13px;"></textarea>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--gray-text);margin-bottom:6px;">📋 Paste Name + Email</div>
+        <div style="font-size:11px;color:var(--gray-text);margin-bottom:8px;line-height:1.6;">Tab or comma separated. Email optional.</div>
+        <textarea id="refs-paste" placeholder="Jack Johnson, jack@gmail.com&#10;Jordan Gregory&#10;Cade Hadley" style="min-height:110px;font-family:monospace;font-size:13px;"></textarea>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
           <button class="btn btn-p" style="flex:1;min-width:140px;" onclick="importRefs(false)">⬆ Import Refs</button>
           <button class="btn btn-s" style="flex:1;min-width:140px;" onclick="importRefs(true)">↺ Replace All</button>
@@ -379,11 +386,13 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <input type="email" id="add-re" placeholder="Email (optional)">
         <button onclick="addRef()" style="height:44px;padding:0 16px;background:var(--black);border:none;color:#fff;border-radius:var(--radius-sm);cursor:pointer;font-size:20px;">+</button>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div id="refs-tbl"></div>
-        <div id="refs-emp" style="font-size:12px;color:var(--gray-text);font-style:italic;display:none;">No refs added yet.</div>
+      <div id="refs-tbl"></div>
+      <div id="refs-emp" style="font-size:12px;color:var(--gray-text);font-style:italic;display:none;">No refs added yet.</div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+        <button class="btn btn-p" style="flex:1;" onclick="saveRosters()">☁️ Save to Google Sheets</button>
+        <button class="btn btn-s" style="flex:1;background:var(--red);" onclick="clearAllRefs()">🗑️ Clear All</button>
       </div>
-      <button class="btn btn-s" style="margin-top:8px;background:var(--red);" onclick="clearAllRefs()">🗑️ Clear All Refs</button>
+      <div class="fb" id="save-refs-fb"></div>
     </div>
   </div>
 
@@ -392,8 +401,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="card-body">
       <div style="background:#f8f8f8;border:2px dashed var(--gray2);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px;">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--gray-text);margin-bottom:6px;">📋 Paste Clinician Names</div>
-        <div style="background:var(--black);border-radius:4px;padding:8px 12px;font-family:monospace;font-size:11px;color:#aaffaa;margin-bottom:10px;line-height:2;">Jimmy Casas<br>Tommy Nunez<br>Wilson Holland</div>
-        <textarea id="clin-paste" placeholder="One name per line..." style="min-height:80px;font-family:monospace;font-size:13px;"></textarea>
+        <textarea id="clin-paste" placeholder="Jimmy Casas&#10;Tommy Nunez&#10;Wilson Holland" style="min-height:80px;font-family:monospace;font-size:13px;"></textarea>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
           <button class="btn btn-p" style="flex:1;min-width:140px;" onclick="importClin(false)">⬆ Import</button>
           <button class="btn btn-s" style="flex:1;min-width:140px;" onclick="importClin(true)">↺ Replace All</button>
@@ -406,7 +414,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <div class="chip-grid" id="clin-chips"></div>
       <div id="clin-emp" style="font-size:12px;color:var(--gray-text);font-style:italic;display:none;">No clinicians added yet.</div>
-      <button class="btn btn-s" style="margin-top:8px;background:var(--red);" onclick="clearAllClin()">🗑️ Clear All Clinicians</button>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+        <button class="btn btn-p" style="flex:1;" onclick="saveRosters()">☁️ Save to Google Sheets</button>
+        <button class="btn btn-s" style="flex:1;background:var(--red);" onclick="clearAllClin()">🗑️ Clear All</button>
+      </div>
+      <div class="fb" id="save-clin-fb"></div>
     </div>
   </div>
 
@@ -415,14 +427,15 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="card-body">
       <p style="font-size:12px;color:var(--gray-text);margin-bottom:12px;">Edit category names if needed (1–5 rating each).</p>
       <div id="cats-ed"></div>
+      <button class="btn btn-s" style="margin-top:10px;" onclick="saveRosters()">☁️ Save Categories to Sheets</button>
     </div>
   </div>
 
   <div class="card" style="border:2px solid var(--red);">
     <div class="card-hdr" style="background:var(--red);"><span class="ci">🗑️</span><span class="ct">Danger Zone</span></div>
     <div class="card-body">
-      <p style="font-size:12px;color:var(--gray-text);margin-bottom:12px;">Clear all evaluation data. Cannot be undone.</p>
-      <button class="btn btn-s" onclick="clearData()">Clear All Eval Data</button>
+      <p style="font-size:12px;color:var(--gray-text);margin-bottom:12px;">Clear all local evaluation data. Cannot be undone.</p>
+      <button class="btn btn-s" onclick="clearData()">Clear All Local Eval Data</button>
     </div>
   </div>
 </div>
@@ -441,21 +454,130 @@ var PTAB = null;
 
 // ── INIT ───────────────────────────────────────
 function init() {
-  try { var s=localStorage.getItem('camp_c'); if(s) Object.assign(C,JSON.parse(s)); } catch(e){}
-  try { var s=localStorage.getItem('camp_e'); if(s) EVS=JSON.parse(s); } catch(e){}
+  // Load URL from localStorage first (needed to sync everything else)
+  try {
+    var s = localStorage.getItem('camp_c');
+    if (s) Object.assign(C, JSON.parse(s));
+  } catch(e){}
+  try {
+    var s = localStorage.getItem('camp_e');
+    if (s) EVS = JSON.parse(s);
+  } catch(e){}
+
   applyConfig();
+  renderCats();
+  renderScript();
+  document.getElementById('campYear').textContent = new Date().getFullYear();
+
+  // If we have a Sheets URL, sync everything from Sheets first
+  if (C.sheetsUrl) {
+    syncFromSheets(function() {
+      finishInit();
+    });
+  } else {
+    finishInit();
+  }
+}
+
+function finishInit() {
   fillClinSel();
   fillRefSel();
   renderRefsTable();
   renderClinChips();
-  renderCats();
   renderBoard();
-  renderScript();
-  // FIX: check clinician warning on load
   checkClinWarning();
 }
 
-// FIX: Show helpful message if no clinicians are loaded yet
+// ── SYNC FROM SHEETS (loads refs, clinicians, evals, config) ──
+function syncFromSheets(callback) {
+  showSyncBanner('Syncing from Google Sheets...');
+  jsonp(C.sheetsUrl + '?action=getAll', 'sync' + Date.now())
+    .then(function(d) {
+      if (d) {
+        // Load refs
+        if (Array.isArray(d.refs) && d.refs.length) {
+          C.refs = d.refs.map(function(r){ return r.name; });
+          C.refEmails = {};
+          d.refs.forEach(function(r){ if(r.email) C.refEmails[r.name] = r.email; });
+        }
+        // Load clinicians
+        if (Array.isArray(d.clinicians) && d.clinicians.length) {
+          C.clinicians = d.clinicians;
+        }
+        // Load categories
+        if (Array.isArray(d.cats) && d.cats.length) {
+          C.cats = d.cats;
+        }
+        // Load camp name
+        if (d.campName) {
+          C.campName = d.campName;
+          document.getElementById('campName').textContent = C.campName;
+        }
+        // Load evals — merge with local, avoid duplicates
+        if (Array.isArray(d.evals) && d.evals.length) {
+          var ids = new Set(EVS.map(function(e){ return String(e.id); }));
+          d.evals.forEach(function(e){
+            if (e && e.id && !ids.has(String(e.id))) EVS.push(e);
+          });
+          saveEvs();
+        }
+        saveCfg();
+        setSt('conn', '✅ Synced · ' + C.refs.length + ' officials · ' + C.clinicians.length + ' clinicians');
+      }
+      hideSyncBanner();
+      renderCats();
+      if (callback) callback();
+    })
+    .catch(function() {
+      hideSyncBanner();
+      setSt('err', '⚠️ Could not sync — using local data');
+      if (callback) callback();
+    });
+}
+
+function showSyncBanner(msg) {
+  var b = document.getElementById('sync-banner');
+  var t = document.getElementById('sync-txt');
+  if (b) b.classList.add('show');
+  if (t) t.textContent = msg;
+}
+function hideSyncBanner() {
+  var b = document.getElementById('sync-banner');
+  if (b) b.classList.remove('show');
+}
+
+// ── SAVE ROSTERS TO SHEETS ─────────────────────
+function saveRosters() {
+  if (!C.sheetsUrl) { showToast('Connect to Google Sheets first.'); return; }
+  showSyncBanner('Saving to Google Sheets...');
+  var cbName = 'gsRoster_' + Date.now();
+  var payload = {
+    action: 'saveRoster',
+    refs: C.refs.map(function(n){ return {name:n, email:C.refEmails[n]||''}; }),
+    clinicians: C.clinicians,
+    cats: C.cats,
+    campName: C.campName || 'Officials Camp'
+  };
+  var data = encodeURIComponent(JSON.stringify(payload));
+  var url = C.sheetsUrl + '?action=saveRoster&data=' + data + '&callback=' + cbName;
+  window[cbName] = function(result) {
+    delete window[cbName];
+    var s = document.getElementById('j-'+cbName); if(s) s.remove();
+    hideSyncBanner();
+    if (result && result.ok) {
+      showToast('✅ Saved! All devices will sync on next open.');
+      setFb('save-refs', '✅ Saved to Sheets', 'var(--green)');
+      setFb('save-clin', '✅ Saved to Sheets', 'var(--green)');
+    } else {
+      showToast('⚠️ Save failed — check connection.');
+    }
+  };
+  var sc = document.createElement('script');
+  sc.id = 'j-'+cbName; sc.src = url;
+  sc.onerror = function(){ delete window[cbName]; hideSyncBanner(); showToast('❌ Save failed.'); };
+  document.head.appendChild(sc);
+}
+
 function checkClinWarning() {
   var msg = document.getElementById('no-clin-msg');
   if (!msg) return;
@@ -463,21 +585,20 @@ function checkClinWarning() {
 }
 
 function applyConfig() {
-  document.getElementById('campName').textContent = C.campName||'Officials Camp';
-  document.getElementById('campYear').textContent = new Date().getFullYear();
-  var u=document.getElementById('cfg-url');   if(u) u.value=C.sheetsUrl||'';
-  var n=document.getElementById('cfg-camp');  if(n) n.value=C.campName||'';
-  var p=document.getElementById('cfg-pin');   if(p) p.value=C.adminPin||'1234';
+  document.getElementById('campName').textContent = C.campName || 'Officials Camp';
+  var u = document.getElementById('cfg-url');   if(u) u.value = C.sheetsUrl || '';
+  var n = document.getElementById('cfg-camp');  if(n) n.value = C.campName || '';
+  var p = document.getElementById('cfg-pin');   if(p) p.value = C.adminPin || '1234';
 }
 
 function saveCfg() {
-  C.sheetsUrl = (document.getElementById('cfg-url')||{}).value||'';
-  C.adminPin  = (document.getElementById('cfg-pin')||{}).value||'1234';
+  C.sheetsUrl = (document.getElementById('cfg-url')||{}).value || '';
+  C.adminPin  = (document.getElementById('cfg-pin')||{}).value || '1234';
   localStorage.setItem('camp_c', JSON.stringify(C));
 }
 
 function saveCampName() {
-  C.campName = (document.getElementById('cfg-camp')||{}).value||'Officials Camp';
+  C.campName = (document.getElementById('cfg-camp')||{}).value || 'Officials Camp';
   saveCfg();
   document.getElementById('campName').textContent = C.campName;
 }
@@ -485,85 +606,78 @@ function saveCampName() {
 function saveEvs() { localStorage.setItem('camp_e', JSON.stringify(EVS)); }
 
 function clearData() {
-  if(!confirm('Delete ALL eval data?')) return;
-  EVS=[]; saveEvs(); renderBoard(); showToast('Cleared.');
+  if (!confirm('Delete ALL local eval data?')) return;
+  EVS = []; saveEvs(); renderBoard(); showToast('Cleared.');
 }
 
 // ── TABS ───────────────────────────────────────
 function goTab(tab, btn) {
-  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
-  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
-  document.getElementById('screen-'+tab).classList.add('active');
-  if(btn) btn.classList.add('active');
-  if(tab==='board') { loadData(); renderBoard(); }
-  if(tab==='refs')  fillRefSel();
-  // FIX: re-check warning and re-populate dropdown when returning to eval tab
-  if(tab==='eval')  { fillClinSel(); checkClinWarning(); chkS1(); }
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.nav-tab').forEach(function(t){ t.classList.remove('active'); });
+  document.getElementById('screen-' + tab).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (tab === 'board') { loadData(); renderBoard(); }
+  if (tab === 'refs')  fillRefSel();
+  if (tab === 'eval')  { fillClinSel(); checkClinWarning(); chkS1(); }
 }
 
 function needAdmin(btn) {
   PTAB = btn;
-  var pin=C.adminPin||'1234';
-  if(sessionStorage.getItem('camp_adm')===pin) { activateSetup(btn); return; }
-  document.getElementById('pinInp').value='';
-  document.getElementById('pinErr').textContent='';
+  var pin = C.adminPin || '1234';
+  if (sessionStorage.getItem('camp_adm') === pin) { activateSetup(btn); return; }
+  document.getElementById('pinInp').value = '';
+  document.getElementById('pinErr').textContent = '';
   document.getElementById('pinOv').classList.add('show');
 }
 
 function activateSetup(btn) {
-  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
-  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.nav-tab').forEach(function(t){ t.classList.remove('active'); });
   document.getElementById('screen-setup').classList.add('active');
-  if(btn) btn.classList.add('active');
+  if (btn) btn.classList.add('active');
 }
 
 function chkPin() {
-  var val=document.getElementById('pinInp').value;
-  var pin=C.adminPin||'1234';
-  if(val.length>=pin.length) {
-    if(val===pin) {
-      sessionStorage.setItem('camp_adm',pin);
+  var val = document.getElementById('pinInp').value;
+  var pin = C.adminPin || '1234';
+  if (val.length >= pin.length) {
+    if (val === pin) {
+      sessionStorage.setItem('camp_adm', pin);
       document.getElementById('pinOv').classList.remove('show');
       activateSetup(PTAB);
     } else {
-      document.getElementById('pinErr').textContent='Incorrect PIN';
-      document.getElementById('pinInp').value='';
-      setTimeout(function(){document.getElementById('pinErr').textContent='';},1500);
+      document.getElementById('pinErr').textContent = 'Incorrect PIN';
+      document.getElementById('pinInp').value = '';
+      setTimeout(function(){ document.getElementById('pinErr').textContent = ''; }, 1500);
     }
   }
 }
 
 // ── DROPDOWNS ──────────────────────────────────
-// FIX: fillSel now uses setTimeout(0) to ensure DOM is ready on mobile
 function fillSel(id, arr, ph) {
   setTimeout(function() {
     var el = document.getElementById(id);
     if (!el) return;
     var cur = el.value;
     el.innerHTML = '<option value="">' + ph + '</option>' +
-      arr.map(function(v) {
-        return '<option value="' + esc(v) + '">' + esc(v) + '</option>';
-      }).join('');
-    // Restore previously selected value if it still exists
+      arr.map(function(v){ return '<option value="' + esc(v) + '">' + esc(v) + '</option>'; }).join('');
     if (cur && arr.indexOf(cur) >= 0) el.value = cur;
   }, 0);
 }
 
-function fillClinSel(){ fillSel('sel-clin', C.clinicians, '— Select your name —'); }
-function fillRefSel() { fillSel('ref-lkp',  C.refs,        '— Select your name —'); }
+function fillClinSel() { fillSel('sel-clin', C.clinicians, '— Select your name —'); }
+function fillRefSel()  { fillSel('ref-lkp',  C.refs,       '— Select name —'); }
 
 // ── EVAL FLOW ──────────────────────────────────
 function showStep(n) {
-  ['es1','es2','es3','es4'].forEach(function(id,i){
-    document.getElementById(id).style.display=(i+1===n)?'block':'none';
+  ['es1','es2','es3','es4'].forEach(function(id, i){
+    document.getElementById(id).style.display = (i + 1 === n) ? 'block' : 'none';
   });
-  // Scroll to top of page on step change (important on mobile)
   window.scrollTo(0, 0);
 }
 
 function chkS1() {
-  var clinVal = document.getElementById('sel-clin').value;
-  var ok = clinVal &&
+  var ok = document.getElementById('sel-clin').value &&
            document.getElementById('sel-day').value &&
            document.getElementById('sel-court').value &&
            document.getElementById('sel-time').value;
@@ -575,535 +689,601 @@ function goS2() {
   CUR.day       = document.getElementById('sel-day').value;
   CUR.court     = document.getElementById('sel-court').value;
   CUR.time      = document.getElementById('sel-time').value;
-  document.getElementById('s2-label').textContent =
-    CUR.clinician+' · '+CUR.day+' · Court '+CUR.court;
-  document.getElementById('ref-search').value='';
+  document.getElementById('s2-label').textContent = CUR.clinician + ' · ' + CUR.day + ' · Court ' + CUR.court;
+  document.getElementById('ref-search').value = '';
   renderRefs();
   showStep(2);
 }
 
 function renderRefs() {
-  var q=document.getElementById('ref-search').value.toLowerCase();
-  var doneKeys=new Set(EVS.map(function(e){
-    return e.clinician+'|'+e.refName+'|'+e.court+'|'+e.day+'|'+e.time;
+  var q = document.getElementById('ref-search').value.toLowerCase();
+  var doneKeys = new Set(EVS.map(function(e){
+    return e.clinician + '|' + e.refName + '|' + e.court + '|' + e.day + '|' + e.time;
   }));
-  var refs=C.refs.filter(function(r){return !q||r.toLowerCase().indexOf(q)>=0;});
-  var el=document.getElementById('ref-list');
-  if(!refs.length){
-    el.innerHTML='<div class="empty" style="padding:24px;"><span class="ei">👤</span><p>No officials found. Add officials in Setup → Referees/Campers.</p></div>';
+  var refs = C.refs.filter(function(r){ return !q || r.toLowerCase().indexOf(q) >= 0; });
+  var el = document.getElementById('ref-list');
+  if (!refs.length) {
+    el.innerHTML = '<div class="empty" style="padding:24px;"><span class="ei">👤</span><p>No officials found. Add in Setup → Referees/Campers.</p></div>';
     return;
   }
-  el.innerHTML=refs.map(function(r){
-    var key=CUR.clinician+'|'+r+'|'+CUR.court+'|'+CUR.day+'|'+CUR.time;
-    var done=doneKeys.has(key);
-    var click=done?"showToast('Already evaluated for this game.')":"startEval('"+r.replace(/'/g,"\\'")+"')";
-    return '<div class="ref-card '+(done?'done':'')+'" onclick="'+click+'">' +
-      '<div class="av '+(done?'green':'')+'">'+ initials(r) +'</div>'+
-      '<div class="ri"><div class="rn">'+esc(r)+'</div>'+
-      '<div class="rm">'+(done?'Evaluated this session':'Tap to evaluate')+'</div></div>'+
-      '<div class="'+(done?'rs-done':'rs-pend')+'">'+(done?'✓ Done':'Pending')+'</div>'+
-      (!done?'<div class="rc">›</div>':'')+
+  el.innerHTML = refs.map(function(r) {
+    var key = CUR.clinician + '|' + r + '|' + CUR.court + '|' + CUR.day + '|' + CUR.time;
+    var done = doneKeys.has(key);
+    var click = done ? "showToast('Already evaluated for this game.')" : "startEval('" + r.replace(/'/g, "\\'") + "')";
+    return '<div class="ref-card ' + (done ? 'done' : '') + '" onclick="' + click + '">' +
+      '<div class="av ' + (done ? 'green' : '') + '">' + initials(r) + '</div>' +
+      '<div class="ri"><div class="rn">' + esc(r) + '</div>' +
+      '<div class="rm">' + (done ? 'Evaluated this session' : 'Tap to evaluate') + '</div></div>' +
+      '<div class="' + (done ? 'rs-done' : 'rs-pend') + '">' + (done ? '✓ Done' : 'Pending') + '</div>' +
+      (!done ? '<div class="rc">›</div>' : '') +
     '</div>';
   }).join('');
 }
 
 function startEval(name) {
-  CUR.refName=name; CUR.scores={};
-  document.getElementById('s3-name').textContent=name;
-  document.getElementById('s3-ctx').textContent=
-    CUR.clinician+' · Court '+CUR.court+' · '+CUR.day+' · '+CUR.time;
-  document.getElementById('eval-fb').value='';
+  CUR.refName = name; CUR.scores = {};
+  document.getElementById('s3-name').textContent = name;
+  document.getElementById('s3-ctx').textContent = CUR.clinician + ' · Court ' + CUR.court + ' · ' + CUR.day + ' · ' + CUR.time;
+  document.getElementById('eval-fb').value = '';
   buildForm();
   showStep(3);
 }
 
 function buildForm() {
-  document.getElementById('score-form').innerHTML=C.cats.map(function(cat){
-    var sl=slug(cat);
-    return '<div class="sc-cat">'+
-      '<div class="sc-lbl">'+cat+'<span class="sc-badge emp" id="b-'+sl+'">—</span></div>'+
-      '<div class="star-row">'+
+  document.getElementById('score-form').innerHTML = C.cats.map(function(cat) {
+    var sl = slug(cat);
+    return '<div class="sc-cat">' +
+      '<div class="sc-lbl">' + cat + '<span class="sc-badge emp" id="b-' + sl + '">—</span></div>' +
+      '<div class="star-row">' +
         [1,2,3,4,5].map(function(v){
-          return '<button class="sbn" data-sl="'+sl+'" data-cat="'+cat.replace(/"/g,'&quot;')+'" data-v="'+v+'" onclick="setSc(\''+sl+'\',\''+cat.replace(/'/g,"\\'")+'\','+v+')">'+v+'</button>';
-        }).join('')+
-      '</div>'+
-      '<div class="sc-hint"><span>Needs Work</span><span>Average</span><span>Excellent</span></div>'+
+          return '<button class="sbn" data-sl="' + sl + '" data-cat="' + cat.replace(/"/g,'&quot;') + '" data-v="' + v + '" onclick="setSc(\'' + sl + '\',\'' + cat.replace(/'/g,"\\'") + '\',' + v + ')">' + v + '</button>';
+        }).join('') +
+      '</div>' +
+      '<div class="sc-hint"><span>Needs Work</span><span>Average</span><span>Excellent</span></div>' +
     '</div>';
   }).join('');
 }
 
 function setSc(sl, cat, val) {
-  CUR.scores[cat]=val;
-  document.querySelectorAll('[data-sl="'+sl+'"]').forEach(function(b){
-    var bv=parseInt(b.getAttribute('data-v'));
-    b.className='sbn'+(bv<=val?' s'+val:'');
+  CUR.scores[cat] = val;
+  document.querySelectorAll('[data-sl="' + sl + '"]').forEach(function(b) {
+    var bv = parseInt(b.getAttribute('data-v'));
+    b.className = 'sbn' + (bv <= val ? ' s' + val : '');
   });
-  var bd=document.getElementById('b-'+sl);
-  if(bd){bd.textContent=val;bd.className='sc-badge';}
-  var vals=Object.values(CUR.scores);
-  if(!vals.length){document.getElementById('avg-prev').textContent='';return;}
-  var avg=vals.reduce(function(a,b){return a+b;},0)/vals.length;
-  document.getElementById('avg-prev').textContent=
-    Object.keys(CUR.scores).length+'/'+C.cats.length+' scored · Eva Score: '+avg.toFixed(3);
+  var bd = document.getElementById('b-' + sl);
+  if (bd) { bd.textContent = val; bd.className = 'sc-badge'; }
+  var vals = Object.values(CUR.scores);
+  if (!vals.length) { document.getElementById('avg-prev').textContent = ''; return; }
+  var avg = vals.reduce(function(a,b){ return a+b; }, 0) / vals.length;
+  document.getElementById('avg-prev').textContent =
+    Object.keys(CUR.scores).length + '/' + C.cats.length + ' scored · Eva Score: ' + avg.toFixed(3);
 }
 
 function submitEval() {
-  var miss=C.cats.filter(function(c){return !CUR.scores[c];});
-  if(miss.length){showToast('Score all '+C.cats.length+' categories.');return;}
-  var vals=Object.values(CUR.scores);
-  var avg=vals.reduce(function(a,b){return a+b;},0)/vals.length;
-  var fin=((avg/5)*100).toFixed(1);
-  var rec={
-    id:Date.now(), ts:new Date().toISOString(),
-    clinician:CUR.clinician, refName:CUR.refName,
-    refEmail:C.refEmails[CUR.refName]||'',
-    court:CUR.court, day:CUR.day, time:CUR.time,
-    scores:Object.assign({},CUR.scores),
-    feedback:document.getElementById('eval-fb').value.trim(),
-    avg:parseFloat(avg.toFixed(3)), final:parseFloat(fin),
-    campName:C.campName||'Officials Camp'
+  var miss = C.cats.filter(function(c){ return !CUR.scores[c]; });
+  if (miss.length) { showToast('Score all ' + C.cats.length + ' categories.'); return; }
+  var vals = Object.values(CUR.scores);
+  var avg = vals.reduce(function(a,b){ return a+b; }, 0) / vals.length;
+  var fin = ((avg / 5) * 100).toFixed(1);
+  var rec = {
+    id: Date.now(), ts: new Date().toISOString(),
+    clinician: CUR.clinician, refName: CUR.refName,
+    refEmail: C.refEmails[CUR.refName] || '',
+    court: CUR.court, day: CUR.day, time: CUR.time,
+    scores: Object.assign({}, CUR.scores),
+    feedback: document.getElementById('eval-fb').value.trim(),
+    avg: parseFloat(avg.toFixed(3)), final: parseFloat(fin),
+    campName: C.campName || 'Officials Camp'
   };
   EVS.push(rec); saveEvs();
-  if(C.sheetsUrl){
-    var allRef=EVS.filter(function(e){return e.refName===rec.refName;});
-    sendToSheets(rec,allRef);
+  if (C.sheetsUrl) {
+    var allRef = EVS.filter(function(e){ return e.refName === rec.refName; });
+    sendToSheets(rec, allRef);
   }
   showStep(4);
-  document.getElementById('succ-detail').textContent=
-    rec.refName+' · Eva Score: '+avg.toFixed(3)+' · Final: '+fin+
-    (rec.refEmail?' · ✉️ Email sent':'');
+  document.getElementById('succ-detail').textContent =
+    rec.refName + ' · Eva Score: ' + avg.toFixed(3) + ' · Final: ' + fin +
+    (rec.refEmail ? ' · ✉️ Email queued' : '');
 }
 
-function evalAnother(){renderRefs();showStep(2);}
+function evalAnother() { renderRefs(); showStep(2); }
 
 // ── MY EVALS ───────────────────────────────────
 function lookupRef() {
-  var name=document.getElementById('ref-lkp').value;
-  var rr=document.getElementById('ref-res');
-  var rn=document.getElementById('ref-none');
-  if(!name){rr.style.display='none';rn.style.display='none';return;}
-  var mine=EVS.filter(function(e){return e.refName===name;});
-  if(!mine.length){rr.style.display='none';rn.style.display='block';return;}
-  rn.style.display='none'; rr.style.display='block';
-  var ta=mine.reduce(function(s,e){return s+e.avg;},0)/mine.length;
-  var tf=mine.reduce(function(s,e){return s+e.final;},0)/mine.length;
-  document.getElementById('ref-stats').innerHTML=
-    '<div class="stat-box"><div class="stat-v">'+mine.length+'</div><div class="stat-l">Evals</div></div>'+
-    '<div class="stat-box"><div class="stat-v">'+ta.toFixed(3)+'</div><div class="stat-l">Eva Avg</div></div>'+
-    '<div class="stat-box"><div class="stat-v">'+tf.toFixed(1)+'</div><div class="stat-l">Final Avg</div></div>';
-  document.getElementById('ref-cards').innerHTML=mine.map(evalCard).join('');
+  var name = document.getElementById('ref-lkp').value;
+  var rr = document.getElementById('ref-res');
+  var rn = document.getElementById('ref-none');
+  if (!name) { rr.style.display = 'none'; rn.style.display = 'none'; return; }
+  var mine = EVS.filter(function(e){ return e.refName === name; });
+  if (!mine.length) { rr.style.display = 'none'; rn.style.display = 'block'; return; }
+  rn.style.display = 'none'; rr.style.display = 'block';
+  var ta = mine.reduce(function(s,e){ return s + e.avg; }, 0) / mine.length;
+  var tf = mine.reduce(function(s,e){ return s + e.final; }, 0) / mine.length;
+  document.getElementById('ref-stats').innerHTML =
+    '<div class="stat-box"><div class="stat-v">' + mine.length + '</div><div class="stat-l">Evals</div></div>' +
+    '<div class="stat-box"><div class="stat-v">' + ta.toFixed(3) + '</div><div class="stat-l">Eva Avg</div></div>' +
+    '<div class="stat-box"><div class="stat-v">' + tf.toFixed(1) + '</div><div class="stat-l">Final Avg</div></div>';
+  document.getElementById('ref-cards').innerHTML = mine.map(evalCard).join('');
 }
 
 function evalCard(e) {
-  var dots=function(v){return [1,2,3,4,5].map(function(i){return '<div class="dot'+(i<=v?' on':'')+'"></div>';}).join('');};
+  var dots = function(v){ return [1,2,3,4,5].map(function(i){ return '<div class="dot' + (i <= v ? ' on' : '') + '"></div>'; }).join(''); };
   var email = e.refEmail || C.refEmails[e.refName] || '';
   var emailBtn = email
-    ? '<button onclick="resendEmail(\''+e.id+'\')" style="margin:12px 18px 14px;width:calc(100% - 36px);padding:10px;background:var(--orange);border:none;border-radius:var(--radius-sm);color:#fff;font-family:\'Bebas Neue\',sans-serif;font-size:16px;letter-spacing:0.06em;cursor:pointer;">✉️ Resend Email to '+esc(e.refName)+'</button>'
-    : '<div style="margin:10px 18px;font-size:11px;color:var(--gray-text);font-style:italic;">No email on file — add email in Setup to enable resend.</div>';
-  return '<div class="edc">'+
-    '<div class="edh">'+
-      '<div><div class="edh-cl">'+esc(e.clinician)+'</div>'+
-      '<div class="edh-gm">'+esc(e.day)+' · Court '+esc(e.court)+' · '+esc(e.time)+'</div></div>'+
-      '<div class="edh-sc">'+e.avg.toFixed(3)+'</div>'+
-    '</div>'+
-    '<div class="esg">'+C.cats.map(function(cat){
-      return '<div class="esc"><div class="esc-l">'+cat+'</div>'+
-        '<div class="esc-v">'+(e.scores[cat]||'—')+'</div>'+
-        '<div class="esc-dots">'+dots(e.scores[cat]||0)+'</div></div>';
-    }).join('')+'</div>'+
-    (e.feedback?'<div class="en">'+esc(e.feedback)+'</div>':'')+
-    emailBtn+
+    ? '<button onclick="resendEmail(\'' + e.id + '\')" style="margin:12px 18px 14px;width:calc(100% - 36px);padding:10px;background:var(--orange);border:none;border-radius:var(--radius-sm);color:#fff;font-family:\'Bebas Neue\',sans-serif;font-size:16px;letter-spacing:0.06em;cursor:pointer;">✉️ Resend Email to ' + esc(e.refName) + '</button>'
+    : '<div style="margin:10px 18px;font-size:11px;color:var(--gray-text);font-style:italic;">No email on file.</div>';
+  return '<div class="edc">' +
+    '<div class="edh">' +
+      '<div><div class="edh-cl">' + esc(e.clinician) + '</div>' +
+      '<div class="edh-gm">' + esc(e.day) + ' · Court ' + esc(e.court) + ' · ' + esc(e.time) + '</div></div>' +
+      '<div class="edh-sc">' + e.avg.toFixed(3) + '</div>' +
+    '</div>' +
+    '<div class="esg">' + C.cats.map(function(cat){
+      return '<div class="esc"><div class="esc-l">' + cat + '</div>' +
+        '<div class="esc-v">' + (e.scores[cat] || '—') + '</div>' +
+        '<div class="esc-dots">' + dots(e.scores[cat] || 0) + '</div></div>';
+    }).join('') + '</div>' +
+    (e.feedback ? '<div class="en">' + esc(e.feedback) + '</div>' : '') +
+    emailBtn +
   '</div>';
 }
 
 function resendEmail(evalId) {
-  if(!C.sheetsUrl){showToast('Connect to Google Sheets in Setup first.');return;}
-  var ev = EVS.filter(function(e){return String(e.id)===String(evalId);})[0];
-  if(!ev){showToast('Eval not found.');return;}
+  if (!C.sheetsUrl) { showToast('Connect to Google Sheets first.'); return; }
+  var ev = EVS.filter(function(e){ return String(e.id) === String(evalId); })[0];
+  if (!ev) { showToast('Eval not found.'); return; }
   var email = ev.refEmail || C.refEmails[ev.refName] || '';
-  if(!email){showToast('No email on file for this ref.');return;}
+  if (!email) { showToast('No email on file.'); return; }
   ev.refEmail = email;
-  var allRef = EVS.filter(function(e){return e.refName===ev.refName;});
-  showToast('⏳ Resending email to '+ev.refName+'...',3000);
-  var cbName = 'gsResend_'+Date.now();
-  var data = encodeURIComponent(JSON.stringify({action:'addEval', eval:ev, allRefEvals:allRef}));
-  var url = C.sheetsUrl+'?action=addEval&data='+data+'&callback='+cbName;
-  window[cbName]=function(result){
+  var allRef = EVS.filter(function(e){ return e.refName === ev.refName; });
+  showToast('⏳ Resending...', 3000);
+  var cbName = 'gsResend_' + Date.now();
+  var data = encodeURIComponent(JSON.stringify({ action:'addEval', eval:ev, allRefEvals:allRef }));
+  var url = C.sheetsUrl + '?action=addEval&data=' + data + '&callback=' + cbName;
+  window[cbName] = function(result) {
     delete window[cbName];
-    var s=document.getElementById('j-'+cbName);if(s)s.remove();
-    if(result&&result.ok) showToast('✅ Email resent to '+ev.refName+'!',3000);
-    else showToast('⚠️ Could not resend — check connection.',3000);
+    var s = document.getElementById('j-'+cbName); if(s) s.remove();
+    showToast(result && result.ok ? '✅ Email resent!' : '⚠️ Could not resend.', 3000);
   };
-  var sc=document.createElement('script');
-  sc.id='j-'+cbName; sc.src=url;
-  sc.onerror=function(){delete window[cbName];var s=document.getElementById('j-'+cbName);if(s)s.remove();showToast('❌ Resend failed.');};
+  var sc = document.createElement('script');
+  sc.id = 'j-' + cbName; sc.src = url;
+  sc.onerror = function(){ delete window[cbName]; showToast('❌ Failed.'); };
   document.head.appendChild(sc);
 }
 
 // ── RANKINGS ───────────────────────────────────
 function renderBoard() {
-  var q=(document.getElementById('brd-search').value||'').toLowerCase();
-  var map={};
-  EVS.forEach(function(e){
-    if(!map[e.refName]) map[e.refName]={name:e.refName,list:[]};
+  var q = (document.getElementById('brd-search').value || '').toLowerCase();
+  var map = {};
+  EVS.forEach(function(e) {
+    if (!map[e.refName]) map[e.refName] = { name:e.refName, list:[] };
     map[e.refName].list.push(e);
   });
-  var rows=Object.values(map).map(function(r){
-    var aa=r.list.reduce(function(s,e){return s+e.avg;},0)/r.list.length;
-    var af=r.list.reduce(function(s,e){return s+e.final;},0)/r.list.length;
-    return {name:r.name,cnt:r.list.length,avg:aa,final:af};
+  var rows = Object.values(map).map(function(r) {
+    var aa = r.list.reduce(function(s,e){ return s + e.avg; }, 0) / r.list.length;
+    var af = r.list.reduce(function(s,e){ return s + e.final; }, 0) / r.list.length;
+    return { name:r.name, cnt:r.list.length, avg:aa, final:af };
   });
-  rows.sort(function(a,b){return (b.final-a.final)*SORT;});
-  if(q) rows=rows.filter(function(r){return r.name.toLowerCase().indexOf(q)>=0;});
-  var tb=document.getElementById('brd-body');
-  var em=document.getElementById('brd-empty');
-  var st=document.getElementById('brd-stats');
-  if(!rows.length){tb.innerHTML='';em.style.display='block';st.style.display='none';return;}
-  em.style.display='none'; st.style.display='grid';
-  st.innerHTML=
-    '<div class="stat-box"><div class="stat-v">'+rows.length+'</div><div class="stat-l">Officials</div></div>'+
-    '<div class="stat-box"><div class="stat-v">'+EVS.length+'</div><div class="stat-l">Total Evals</div></div>'+
-    '<div class="stat-box"><div class="stat-v">'+(rows[0].name.split(' ')[0]||rows[0].name)+'</div><div class="stat-l">#1 Ranked</div></div>';
-  tb.innerHTML=rows.map(function(r,i){
-    var rc=i===0?'g1':i===1?'g2':i===2?'g3':'';
-    var sc=r.final>=70?'fs-t':r.final>=45?'fs-m':'fs-l';
-    var bw=Math.round((r.avg/5)*100);
-    return '<tr>'+
-      '<td><span class="rank '+rc+'">'+(i+1)+'</span></td>'+
-      '<td style="font-weight:600;">'+esc(r.name)+'</td>'+
-      '<td><span class="ep">'+r.cnt+'</span></td>'+
-      '<td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:'+bw+'%"></div></div>'+
-        '<span class="bar-txt">'+r.avg.toFixed(3)+'</span></div></td>'+
-      '<td><span class="fs '+sc+'">'+r.final.toFixed(1)+'</span></td>'+
+  rows.sort(function(a,b){ return (b.final - a.final) * SORT; });
+  if (q) rows = rows.filter(function(r){ return r.name.toLowerCase().indexOf(q) >= 0; });
+  var tb = document.getElementById('brd-body');
+  var em = document.getElementById('brd-empty');
+  var st = document.getElementById('brd-stats');
+  if (!rows.length) { tb.innerHTML = ''; em.style.display = 'block'; st.style.display = 'none'; return; }
+  em.style.display = 'none'; st.style.display = 'grid';
+  st.innerHTML =
+    '<div class="stat-box"><div class="stat-v">' + rows.length + '</div><div class="stat-l">Officials</div></div>' +
+    '<div class="stat-box"><div class="stat-v">' + EVS.length + '</div><div class="stat-l">Total Evals</div></div>' +
+    '<div class="stat-box"><div class="stat-v">' + (rows[0].name.split(' ')[0] || rows[0].name) + '</div><div class="stat-l">#1 Ranked</div></div>';
+  tb.innerHTML = rows.map(function(r, i) {
+    var rc = i===0?'g1':i===1?'g2':i===2?'g3':'';
+    var sc = r.final >= 70 ? 'fs-t' : r.final >= 45 ? 'fs-m' : 'fs-l';
+    var bw = Math.round((r.avg / 5) * 100);
+    return '<tr>' +
+      '<td><span class="rank ' + rc + '">' + (i+1) + '</span></td>' +
+      '<td style="font-weight:600;">' + esc(r.name) + '</td>' +
+      '<td><span class="ep">' + r.cnt + '</span></td>' +
+      '<td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:' + bw + '%"></div></div>' +
+        '<span class="bar-txt">' + r.avg.toFixed(3) + '</span></div></td>' +
+      '<td><span class="fs ' + sc + '">' + r.final.toFixed(1) + '</span></td>' +
     '</tr>';
   }).join('');
 }
-function toggleSort(){SORT*=-1;renderBoard();}
+function toggleSort() { SORT *= -1; renderBoard(); }
 
 // ── SETUP — REFS ───────────────────────────────
 function importRefs(replace) {
-  var raw=document.getElementById('refs-paste').value||'';
-  var parsed=parseRefEmail(raw);
-  if(!parsed.length){setFb('refs','⚠️ No valid rows found.','var(--orange)');return;}
-  if(replace){if(!confirm('Replace all '+C.refs.length+' refs?'))return;C.refs=[];C.refEmails={};}
-  var added=0;
-  parsed.forEach(function(p){
-    if(!C.refs.includes(p.name)){C.refs.push(p.name);added++;}
-    if(p.email) C.refEmails[p.name]=p.email;
+  var raw = document.getElementById('refs-paste').value || '';
+  var parsed = parseRefEmail(raw);
+  if (!parsed.length) { setFb('refs', '⚠️ No valid rows found.', 'var(--orange)'); return; }
+  if (replace) { if (!confirm('Replace all ' + C.refs.length + ' refs?')) return; C.refs = []; C.refEmails = {}; }
+  var added = 0;
+  parsed.forEach(function(p) {
+    if (!C.refs.includes(p.name)) { C.refs.push(p.name); added++; }
+    if (p.email) C.refEmails[p.name] = p.email;
   });
   C.refs.sort();
   saveCfg(); renderRefsTable(); fillClinSel(); fillRefSel();
-  document.getElementById('refs-paste').value='';
-  var we=parsed.filter(function(p){return p.email;}).length;
-  setFb('refs','✅ '+added+' refs · '+we+' emails · '+C.refs.length+' total','var(--green)');
-  showToast(added+' refs imported!');
+  document.getElementById('refs-paste').value = '';
+  var we = parsed.filter(function(p){ return p.email; }).length;
+  setFb('refs', '✅ ' + added + ' added · ' + we + ' emails · ' + C.refs.length + ' total', 'var(--green)');
+  showToast(added + ' refs imported! Hit Save to Sheets to sync all devices.');
 }
 
 function addRef() {
-  var name=(document.getElementById('add-rn').value||'').trim();
-  var email=(document.getElementById('add-re').value||'').trim().toLowerCase();
-  if(!name){showToast('Enter a name.');return;}
-  if(!C.refs.includes(name)) C.refs.push(name);
-  if(email) C.refEmails[name]=email;
+  var name = (document.getElementById('add-rn').value || '').trim();
+  var email = (document.getElementById('add-re').value || '').trim().toLowerCase();
+  if (!name) { showToast('Enter a name.'); return; }
+  if (!C.refs.includes(name)) C.refs.push(name);
+  if (email) C.refEmails[name] = email;
   saveCfg(); renderRefsTable(); fillClinSel(); fillRefSel();
-  document.getElementById('add-rn').value=''; document.getElementById('add-re').value='';
+  document.getElementById('add-rn').value = ''; document.getElementById('add-re').value = '';
 }
 
 function clearAllRefs() {
-  if(!confirm('Delete ALL refs and emails? Cannot be undone.')) return;
+  if (!confirm('Delete ALL refs?')) return;
   C.refs = []; C.refEmails = {};
   saveCfg(); renderRefsTable(); fillClinSel(); fillRefSel();
-  showToast('All refs cleared.');
+  showToast('Cleared locally. Hit Save to Sheets to sync.');
 }
 
 function rmRef(name) {
-  C.refs=C.refs.filter(function(r){return r!==name;});
+  C.refs = C.refs.filter(function(r){ return r !== name; });
   delete C.refEmails[name];
   saveCfg(); renderRefsTable(); fillClinSel(); fillRefSel();
 }
 
 function renderRefsTable() {
-  var badge=document.getElementById('refs-badge');
-  var tbl=document.getElementById('refs-tbl');
-  var emp=document.getElementById('refs-emp');
-  if(badge) badge.textContent=C.refs.length+' loaded';
-  if(!C.refs.length){if(tbl)tbl.innerHTML='';if(emp)emp.style.display='block';return;}
-  if(emp) emp.style.display='none';
-  tbl.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px;">'+
-    '<thead><tr>'+
-      '<th style="text-align:left;padding:6px 8px;background:var(--black);color:#fff;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;">Name</th>'+
-      '<th style="text-align:left;padding:6px 8px;background:var(--black);color:#fff;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;">Email</th>'+
-      '<th style="background:var(--black);width:32px;"></th>'+
-    '</tr></thead><tbody>'+
-    C.refs.map(function(name,i){
-      var email=C.refEmails[name]||'';
-      return '<tr style="background:'+(i%2===0?'#fff':'#f8f8f8')+';">'+
-        '<td style="padding:7px 8px;font-weight:600;border-bottom:1px solid var(--gray2);">'+esc(name)+'</td>'+
-        '<td style="padding:7px 8px;border-bottom:1px solid var(--gray2);color:'+(email?'var(--dark)':'#bbb')+';">'+
-          (email?esc(email):'<em style="font-style:italic;font-size:11px;">no email</em>')+'</td>'+
-        '<td style="padding:7px 8px;border-bottom:1px solid var(--gray2);text-align:center;">'+
-          '<span style="cursor:pointer;color:var(--red);font-size:16px;font-weight:700;" onclick="rmRef(\''+name.replace(/'/g,"\\'")+'\')">×</span>'+
+  var badge = document.getElementById('refs-badge');
+  var tbl = document.getElementById('refs-tbl');
+  var emp = document.getElementById('refs-emp');
+  if (badge) badge.textContent = C.refs.length + ' loaded';
+  if (!C.refs.length) { if(tbl) tbl.innerHTML = ''; if(emp) emp.style.display = 'block'; return; }
+  if (emp) emp.style.display = 'none';
+  tbl.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+    '<thead><tr>' +
+      '<th style="text-align:left;padding:6px 8px;background:var(--black);color:#fff;font-size:10px;text-transform:uppercase;">Name</th>' +
+      '<th style="text-align:left;padding:6px 8px;background:var(--black);color:#fff;font-size:10px;text-transform:uppercase;">Email</th>' +
+      '<th style="background:var(--black);width:32px;"></th>' +
+    '</tr></thead><tbody>' +
+    C.refs.map(function(name, i) {
+      var email = C.refEmails[name] || '';
+      return '<tr style="background:' + (i%2===0?'#fff':'#f8f8f8') + ';">' +
+        '<td style="padding:7px 8px;font-weight:600;border-bottom:1px solid var(--gray2);">' + esc(name) + '</td>' +
+        '<td style="padding:7px 8px;border-bottom:1px solid var(--gray2);color:' + (email?'var(--dark)':'#bbb') + ';">' +
+          (email ? esc(email) : '<em style="font-style:italic;font-size:11px;">no email</em>') + '</td>' +
+        '<td style="padding:7px 8px;border-bottom:1px solid var(--gray2);text-align:center;">' +
+          '<span style="cursor:pointer;color:var(--red);font-size:16px;font-weight:700;" onclick="rmRef(\'' + name.replace(/'/g,"\\'") + '\')">×</span>' +
         '</td></tr>';
-    }).join('')+'</tbody></table>';
+    }).join('') + '</tbody></table>';
 }
 
 function parseRefEmail(raw) {
-  return raw.split('\n').map(function(line){
-    var parts=line.indexOf('\t')>=0?line.split('\t'):line.split(',');
-    var name=(parts[0]||'').replace(/^["'\s]+|["'\s]+$/g,'').trim();
-    var email=(parts[1]||'').replace(/^["'\s]+|["'\s]+$/g,'').trim().toLowerCase();
-    return {name:name,email:email};
-  }).filter(function(r){
-    if(!r.name||r.name.length<2) return false;
+  return raw.split('\n').map(function(line) {
+    var parts = line.indexOf('\t') >= 0 ? line.split('\t') : line.split(',');
+    var name = (parts[0] || '').replace(/^["'\s]+|["'\s]+$/g, '').trim();
+    var email = (parts[1] || '').replace(/^["'\s]+|["'\s]+$/g, '').trim().toLowerCase();
+    return { name:name, email:email };
+  }).filter(function(r) {
+    if (!r.name || r.name.length < 2) return false;
     return !['name','referee','ref','camper','first','last'].includes(r.name.toLowerCase());
   });
 }
 
 // ── SETUP — CLINICIANS ─────────────────────────
 function importClin(replace) {
-  var raw=document.getElementById('clin-paste').value||'';
-  var names=raw.split('\n').map(function(l){return l.trim();}).filter(function(l){return l.length>1;});
-  if(!names.length){setFb('clin','⚠️ No names found.','var(--orange)');return;}
-  if(replace){if(!confirm('Replace all '+C.clinicians.length+' clinicians?'))return;C.clinicians=[];}
-  var added=0;
-  names.forEach(function(n){if(!C.clinicians.includes(n)){C.clinicians.push(n);added++;}});
+  var raw = document.getElementById('clin-paste').value || '';
+  var names = raw.split('\n').map(function(l){ return l.trim(); }).filter(function(l){ return l.length > 1; });
+  if (!names.length) { setFb('clin', '⚠️ No names found.', 'var(--orange)'); return; }
+  if (replace) { if (!confirm('Replace all?')) return; C.clinicians = []; }
+  var added = 0;
+  names.forEach(function(n){ if (!C.clinicians.includes(n)) { C.clinicians.push(n); added++; } });
   C.clinicians.sort();
-  saveCfg(); renderClinChips(); fillClinSel();
-  // FIX: hide warning after clinicians are added
-  checkClinWarning();
-  document.getElementById('clin-paste').value='';
-  setFb('clin','✅ '+added+' imported · '+C.clinicians.length+' total','var(--green)');
+  saveCfg(); renderClinChips(); fillClinSel(); checkClinWarning();
+  document.getElementById('clin-paste').value = '';
+  setFb('clin', '✅ ' + added + ' imported · ' + C.clinicians.length + ' total', 'var(--green)');
+  showToast(added + ' clinicians added! Hit Save to Sheets to sync all devices.');
 }
 
 function addClin() {
-  var val=(document.getElementById('add-ci').value||'').trim();
-  if(!val) return;
-  if(!C.clinicians.includes(val)) C.clinicians.push(val);
-  saveCfg(); renderClinChips(); fillClinSel();
-  // FIX: hide warning after clinician added
-  checkClinWarning();
-  document.getElementById('add-ci').value='';
+  var val = (document.getElementById('add-ci').value || '').trim();
+  if (!val) return;
+  if (!C.clinicians.includes(val)) C.clinicians.push(val);
+  saveCfg(); renderClinChips(); fillClinSel(); checkClinWarning();
+  document.getElementById('add-ci').value = '';
 }
 
 function clearAllClin() {
-  if(!confirm('Delete ALL clinicians?')) return;
+  if (!confirm('Delete ALL clinicians?')) return;
   C.clinicians = [];
-  saveCfg(); renderClinChips(); fillClinSel();
-  checkClinWarning();
-  showToast('All clinicians cleared.');
+  saveCfg(); renderClinChips(); fillClinSel(); checkClinWarning();
+  showToast('Cleared locally. Hit Save to Sheets to sync.');
 }
 
 function rmClin(name) {
-  C.clinicians=C.clinicians.filter(function(c){return c!==name;});
-  saveCfg(); renderClinChips(); fillClinSel();
-  checkClinWarning();
+  C.clinicians = C.clinicians.filter(function(c){ return c !== name; });
+  saveCfg(); renderClinChips(); fillClinSel(); checkClinWarning();
 }
 
 function renderClinChips() {
-  var el=document.getElementById('clin-chips');
-  var emp=document.getElementById('clin-emp');
-  var badge=document.getElementById('clin-badge');
-  if(badge) badge.textContent=C.clinicians.length+' loaded';
-  if(!C.clinicians.length){el.innerHTML='';if(emp)emp.style.display='block';return;}
-  if(emp) emp.style.display='none';
-  el.innerHTML=C.clinicians.map(function(v){
-    return '<div class="chip">'+esc(v)+'<span class="chip-x" onclick="rmClin(\''+v.replace(/'/g,"\\'")+'\')">×</span></div>';
+  var el = document.getElementById('clin-chips');
+  var emp = document.getElementById('clin-emp');
+  var badge = document.getElementById('clin-badge');
+  if (badge) badge.textContent = C.clinicians.length + ' loaded';
+  if (!C.clinicians.length) { el.innerHTML = ''; if(emp) emp.style.display = 'block'; return; }
+  if (emp) emp.style.display = 'none';
+  el.innerHTML = C.clinicians.map(function(v) {
+    return '<div class="chip">' + esc(v) + '<span class="chip-x" onclick="rmClin(\'' + v.replace(/'/g,"\\'") + '\')">×</span></div>';
   }).join('');
 }
 
 // ── CATEGORIES ─────────────────────────────────
 function renderCats() {
-  var el=document.getElementById('cats-ed'); if(!el) return;
-  el.innerHTML=C.cats.map(function(c,i){
-    return '<div style="display:flex;gap:8px;margin-bottom:8px;">'+
-      '<input type="text" value="'+esc(c)+'" onchange="C.cats['+i+']=this.value;saveCfg();" style="flex:1;"></div>';
+  var el = document.getElementById('cats-ed'); if (!el) return;
+  el.innerHTML = C.cats.map(function(c, i) {
+    return '<div style="display:flex;gap:8px;margin-bottom:8px;">' +
+      '<input type="text" value="' + esc(c) + '" onchange="C.cats[' + i + ']=this.value;saveCfg();" style="flex:1;"></div>';
   }).join('');
 }
 
 // ── GOOGLE SHEETS ──────────────────────────────
 function jsonp(url, cb) {
-  return new Promise(function(res,rej){
-    var to=setTimeout(function(){delete window[cb];var s=document.getElementById('j-'+cb);if(s)s.remove();rej(new Error('Timeout'));},10000);
-    window[cb]=function(data){clearTimeout(to);delete window[cb];var s=document.getElementById('j-'+cb);if(s)s.remove();res(data);};
-    var sc=document.createElement('script');
-    sc.id='j-'+cb;
-    sc.src=url+(url.indexOf('?')>=0?'&':'?')+'callback='+cb+'&t='+Date.now();
-    sc.onerror=function(){clearTimeout(to);rej(new Error('Load error'));};
+  return new Promise(function(res, rej) {
+    var to = setTimeout(function(){ delete window[cb]; var s=document.getElementById('j-'+cb); if(s)s.remove(); rej(new Error('Timeout')); }, 12000);
+    window[cb] = function(data){ clearTimeout(to); delete window[cb]; var s=document.getElementById('j-'+cb); if(s)s.remove(); res(data); };
+    var sc = document.createElement('script');
+    sc.id = 'j-' + cb;
+    sc.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cb + '&t=' + Date.now();
+    sc.onerror = function(){ clearTimeout(to); rej(new Error('Load error')); };
     document.head.appendChild(sc);
   });
 }
 
 function loadData() {
-  if(!C.sheetsUrl){setSt('disc','Enter Apps Script URL in Setup');return;}
-  setSt('disc','Connecting...');
-  jsonp(C.sheetsUrl+'?action=getEvals','gr'+Date.now())
-    .then(function(d){
-      if(d&&Array.isArray(d.evals)){
-        var ids=new Set(EVS.map(function(e){return String(e.id);}));
-        d.evals.forEach(function(e){if(e&&e.id&&!ids.has(String(e.id)))EVS.push(e);});
-        saveEvs(); setSt('conn','✅ Connected · '+EVS.length+' evals');
-      } else { setSt('conn','✅ Connected · 0 evals'); }
+  if (!C.sheetsUrl) { setSt('disc', 'Enter Apps Script URL in Setup'); return; }
+  setSt('disc', 'Connecting...');
+  jsonp(C.sheetsUrl + '?action=getAll', 'gr' + Date.now())
+    .then(function(d) {
+      if (d && Array.isArray(d.evals)) {
+        var ids = new Set(EVS.map(function(e){ return String(e.id); }));
+        d.evals.forEach(function(e){ if(e && e.id && !ids.has(String(e.id))) EVS.push(e); });
+        saveEvs();
+      }
+      if (d && Array.isArray(d.refs) && d.refs.length) {
+        C.refs = d.refs.map(function(r){ return r.name; });
+        C.refEmails = {};
+        d.refs.forEach(function(r){ if(r.email) C.refEmails[r.name]=r.email; });
+        fillRefSel(); fillClinSel(); renderRefsTable();
+      }
+      if (d && Array.isArray(d.clinicians) && d.clinicians.length) {
+        C.clinicians = d.clinicians;
+        renderClinChips(); fillClinSel();
+      }
+      saveCfg();
+      setSt('conn', '✅ Connected · ' + EVS.length + ' evals · ' + C.refs.length + ' officials');
       renderBoard();
     })
-    .catch(function(){setSt('err','❌ Could not connect');renderBoard();});
+    .catch(function(){ setSt('err', '❌ Could not connect'); renderBoard(); });
 }
 
 function sendToSheets(rec, allRef) {
-  if(!C.sheetsUrl) return;
+  if (!C.sheetsUrl) return;
   var cbName = 'gsSave_' + Date.now();
-  var data = encodeURIComponent(JSON.stringify({action:'addEval',eval:rec,allRefEvals:allRef||[rec]}));
+  var data = encodeURIComponent(JSON.stringify({ action:'addEval', eval:rec, allRefEvals:allRef||[rec] }));
   var url = C.sheetsUrl + '?action=addEval&data=' + data + '&callback=' + cbName;
   window[cbName] = function(result) {
     delete window[cbName];
     var s = document.getElementById('j-'+cbName); if(s) s.remove();
-    if(result && result.ok) showToast('✅ Saved to Sheets' + (rec.refEmail ? ' · Email sent' : ''));
+    if (result && result.ok) showToast('✅ Saved to Sheets' + (rec.refEmail ? ' · Email sent' : ''));
   };
   var sc = document.createElement('script');
   sc.id = 'j-' + cbName; sc.src = url;
-  sc.onerror = function() { delete window[cbName]; var s=document.getElementById('j-'+cbName); if(s)s.remove(); };
+  sc.onerror = function(){ delete window[cbName]; var s=document.getElementById('j-'+cbName); if(s)s.remove(); };
   document.head.appendChild(sc);
 }
 
-function setSt(type,msg) {
-  var el=document.getElementById('sh-status');
-  var tx=document.getElementById('sh-txt');
-  if(!el) return;
-  el.className='sheets-st '+(type==='conn'?'conn':type==='disc'?'disc':'err');
-  var d=el.querySelector('.sdot');
-  if(d) d.className='sdot '+(type==='conn'?'sdot-g':type==='disc'?'sdot-o':'sdot-r');
-  if(tx) tx.textContent=msg;
+function setSt(type, msg) {
+  var el = document.getElementById('sh-status');
+  var tx = document.getElementById('sh-txt');
+  if (!el) return;
+  el.className = 'sheets-st ' + (type==='conn'?'conn':type==='disc'?'disc':'err');
+  var d = el.querySelector('.sdot');
+  if (d) d.className = 'sdot ' + (type==='conn'?'sdot-g':type==='disc'?'sdot-o':'sdot-r');
+  if (tx) tx.textContent = msg;
 }
 
 function openPing() {
-  var url=(document.getElementById('cfg-url')||{}).value||'';
-  if(!url){showToast('Enter URL first.');return;}
-  window.open(url+'?action=ping&callback=test','_blank');
-  showToast('Should see: test({"ok":true,...})',4000);
+  var url = (document.getElementById('cfg-url')||{}).value || '';
+  if (!url) { showToast('Enter URL first.'); return; }
+  window.open(url + '?action=ping&callback=test', '_blank');
+  showToast('Should see: test({"ok":true,...})', 4000);
 }
 
 function testConn() {
-  var url=(document.getElementById('cfg-url')||{}).value||'';
-  if(!url){showToast('Enter URL first.');return;}
-  saveCfg(); C.sheetsUrl=url;
-  var box=document.getElementById('conn-res');
-  box.style.display='block'; box.style.background='#fff8f0'; box.style.border='1px solid var(--orange)';
-  box.innerHTML='⏳ Testing...'; setSt('disc','Testing...');
-  jsonp(url+'?action=ping','gp'+Date.now())
-    .then(function(d){
-      if(d&&d.ok){
-        box.style.background='#f0faf4'; box.style.border='1px solid var(--green)';
-        box.innerHTML='✅ <strong>Connected!</strong> '+JSON.stringify(d);
-        setSt('conn','✅ Connected to Google Sheets');
-        showToast('✅ Connected!');
+  var url = (document.getElementById('cfg-url')||{}).value || '';
+  if (!url) { showToast('Enter URL first.'); return; }
+  saveCfg(); C.sheetsUrl = url;
+  var box = document.getElementById('conn-res');
+  box.style.display = 'block'; box.style.background = '#fff8f0'; box.style.border = '1px solid var(--orange)';
+  box.innerHTML = '⏳ Testing...'; setSt('disc', 'Testing...');
+  jsonp(url + '?action=ping', 'gp' + Date.now())
+    .then(function(d) {
+      if (d && d.ok) {
+        box.style.background = '#f0faf4'; box.style.border = '1px solid var(--green)';
+        box.innerHTML = '✅ <strong>Connected!</strong> ' + JSON.stringify(d);
+        setSt('conn', '✅ Connected');
+        showToast('✅ Connected! Now syncing data...');
+        syncFromSheets(function(){ finishInit(); });
       } else {
-        box.style.background='#fff8f0'; box.style.border='1px solid var(--orange)';
-        box.innerHTML='⚠️ Got response but wrong format: '+JSON.stringify(d);
-        setSt('err','⚠️ Wrong format');
+        box.style.background = '#fff8f0'; box.style.border = '1px solid var(--orange)';
+        box.innerHTML = '⚠️ Wrong format: ' + JSON.stringify(d);
+        setSt('err', '⚠️ Wrong format');
       }
     })
-    .catch(function(err){
-      var loc=window.location.protocol==='file:';
-      box.style.background='#fff0f0'; box.style.border='1px solid var(--red)';
-      box.innerHTML=loc
-        ?'❌ <strong>Local file detected.</strong> Host on <a href="https://netlify.com/drop" target="_blank" style="color:var(--orange);">Netlify Drop</a> first.'
-        :'❌ Cannot connect. Error: '+err.message;
-      setSt('err',loc?'❌ Must be hosted':'❌ Cannot connect');
+    .catch(function(err) {
+      var loc = window.location.protocol === 'file:';
+      box.style.background = '#fff0f0'; box.style.border = '1px solid var(--red)';
+      box.innerHTML = loc
+        ? '❌ <strong>Local file.</strong> Host on <a href="https://netlify.com/drop" target="_blank" style="color:var(--orange);">Netlify Drop</a> first.'
+        : '❌ Cannot connect: ' + err.message;
+      setSt('err', loc ? '❌ Must be hosted' : '❌ Cannot connect');
     });
 }
 
 // ── APPS SCRIPT ────────────────────────────────
 function renderScript() {
   var code =
-"// Officials Camp — Apps Script (with email auto-send)\n"+
-"// Deploy: Web App | Execute as: Me | Who has access: Anyone\n\n"+
-"var SHEET='Evaluations';\n"+
-"var CATS=['Appearance','Judgement','Game Management','Positioning','Mechanics','Communication','Handle Pressure'];\n\n"+
-"function doGet(e){\n"+
-"  var p=e.parameter||{},cb=p.callback||'',res;\n"+
-"  try{\n"+
-"    if(p.action==='ping')          res={ok:true,ts:new Date().toISOString()};\n"+
-"    else if(p.action==='getEvals') res={evals:getEvals()};\n"+
-"    else if(p.action==='addEval')  {\n"+
-"      var body=JSON.parse(decodeURIComponent(p.data||'{}'));\n"+
-"      saveEval(body.eval);\n"+
-"      if(body.eval && body.eval.refEmail) sendEmail(body.eval, body.allRefEvals||[body.eval]);\n"+
-"      res={ok:true};\n"+
-"    }\n"+
-"    else res={error:'Unknown action'};\n"+
-"  }catch(err){res={error:err.toString()};}\n"+
-"  var j=JSON.stringify(res);\n"+
-"  if(cb) return ContentService.createTextOutput(cb+'('+j+');').setMimeType(ContentService.MimeType.JAVASCRIPT);\n"+
-"  return ContentService.createTextOutput(j).setMimeType(ContentService.MimeType.JSON);\n"+
-"}\n\n"+
-"function doPost(e){\n"+
-"  try{\n"+
-"    var body=JSON.parse(e.postData?e.postData.contents:'{}');\n"+
-"    if(body.action==='addEval'){\n"+
-"      saveEval(body.eval);\n"+
-"      if(body.eval&&body.eval.refEmail) sendEmail(body.eval,body.allRefEvals||[body.eval]);\n"+
-"      return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);\n"+
-"    }\n"+
-"  }catch(err){return ContentService.createTextOutput(JSON.stringify({error:err.toString()})).setMimeType(ContentService.MimeType.JSON);}\n"+
-"}\n\n"+
-"function getEvals(){\n"+
-"  var ss=SpreadsheetApp.getActiveSpreadsheet();\n"+
-"  var sh=ss.getSheetByName(SHEET);\n"+
-"  if(!sh) return [];\n"+
-"  var data=sh.getDataRange().getValues();\n"+
-"  if(data.length<2) return [];\n"+
-"  var hdr=data[0];\n"+
-"  return data.slice(1).map(function(row){\n"+
-"    var o={}; hdr.forEach(function(h,i){o[h]=row[i];});\n"+
-"    try{o.scores=JSON.parse(o.scores);}catch(e){}\n"+
-"    return o;\n"+
-"  });\n"+
-"}\n\n"+
-"function saveEval(ev){\n"+
-"  var ss=SpreadsheetApp.getActiveSpreadsheet();\n"+
-"  var sh=ss.getSheetByName(SHEET);\n"+
-"  if(!sh){\n"+
-"    sh=ss.insertSheet(SHEET);\n"+
-"    sh.appendRow(['id','ts','clinician','refName','refEmail','court','day','time','scores','feedback','avg','final']);\n"+
-"    sh.setFrozenRows(1); sh.getRange(1,1,1,12).setFontWeight('bold');\n"+
-"  }\n"+
-"  sh.appendRow([ev.id||'',ev.ts||'',ev.clinician||'',ev.refName||'',ev.refEmail||'',\n"+
-"    ev.court||'',ev.day||'',ev.time||'',JSON.stringify(ev.scores||{}),ev.feedback||'',ev.avg||0,ev.final||0]);\n"+
-"}\n\n"+
-"function sendEmail(ev,allRef){\n"+
-"  var email=ev.refEmail; if(!email) return;\n"+
-"  var camp=ev.campName||'Officials Camp';\n"+
-"  function bar(v){var s='';for(var i=1;i<=5;i++)s+=i<=v?'<span style=\"color:#F47820;\">&#9679;</span>':'<span style=\"color:#ddd;\">&#9679;</span>';return s;}\n"+
-"  var rows='';\n"+
-"  CATS.forEach(function(cat){var v=ev.scores[cat]||0;\n"+
-"    rows+='<tr><td style=\"padding:10px 14px;font-weight:600;border-bottom:1px solid #f0f0f0;\">'+cat+'</td>'+\n"+
-"      '<td style=\"padding:10px 14px;border-bottom:1px solid #f0f0f0;\">'+bar(v)+'</td>'+\n"+
-"      '<td style=\"padding:10px 14px;font-size:20px;font-weight:700;color:#F47820;border-bottom:1px solid #f0f0f0;text-align:right;\">'+v+'/5</td></tr>';\n"+
-"  });\n"+
-"  var ta=0,tf=0;\n"+
-"  allRef.forEach(function(e){ta+=(e.avg||0);tf+=(e.final||0);});\n"+
-"  var ra=(ta/allRef.length).toFixed(3),rf=(tf/allRef.length).toFixed(1);\n"+
-"  var html='...(email html)...';\n"+
-"  MailApp.sendEmail({to:email,subject:camp+' — Eval: '+ev.refName+' ('+ev.day+', Court '+ev.court+')',htmlBody:html});\n"+
-"}\n\n"+
-"function testScript(){Logger.log(JSON.stringify(getEvals()));}";
-  var el=document.getElementById('script-box');
-  if(el) el.textContent=code;
+'// Officials Camp — Apps Script v2 (cross-device sync)\n' +
+'// Deploy: Web App | Execute as: Me | Who has access: Anyone\n\n' +
+'var EVALS_SHEET = "Evaluations";\n' +
+'var CONFIG_SHEET = "Config";\n\n' +
+'function doGet(e) {\n' +
+'  var p = e.parameter || {}, cb = p.callback || "", res;\n' +
+'  try {\n' +
+'    if (p.action === "ping")          res = {ok:true, ts:new Date().toISOString()};\n' +
+'    else if (p.action === "getAll")   res = getAll();\n' +
+'    else if (p.action === "getEvals") res = {evals:getEvals()};\n' +
+'    else if (p.action === "addEval")  {\n' +
+'      var body = JSON.parse(decodeURIComponent(p.data || "{}"));\n' +
+'      saveEval(body.eval);\n' +
+'      if (body.eval && body.eval.refEmail) sendEmail(body.eval, body.allRefEvals || [body.eval]);\n' +
+'      res = {ok:true};\n' +
+'    }\n' +
+'    else if (p.action === "saveRoster") {\n' +
+'      var body = JSON.parse(decodeURIComponent(p.data || "{}"));\n' +
+'      saveRoster(body);\n' +
+'      res = {ok:true};\n' +
+'    }\n' +
+'    else res = {error:"Unknown action"};\n' +
+'  } catch(err) { res = {error:err.toString()}; }\n' +
+'  var j = JSON.stringify(res);\n' +
+'  if (cb) return ContentService.createTextOutput(cb+"("+j+");").setMimeType(ContentService.MimeType.JAVASCRIPT);\n' +
+'  return ContentService.createTextOutput(j).setMimeType(ContentService.MimeType.JSON);\n' +
+'}\n\n' +
+'// Returns everything the app needs on load\n' +
+'function getAll() {\n' +
+'  var ss = SpreadsheetApp.getActiveSpreadsheet();\n' +
+'  var cfg = getConfig(ss);\n' +
+'  return {\n' +
+'    evals: getEvals(),\n' +
+'    refs: cfg.refs || [],\n' +
+'    clinicians: cfg.clinicians || [],\n' +
+'    cats: cfg.cats || [],\n' +
+'    campName: cfg.campName || "Officials Camp"\n' +
+'  };\n' +
+'}\n\n' +
+'function getConfig(ss) {\n' +
+'  ss = ss || SpreadsheetApp.getActiveSpreadsheet();\n' +
+'  var sh = ss.getSheetByName(CONFIG_SHEET);\n' +
+'  if (!sh) return {};\n' +
+'  var data = sh.getDataRange().getValues();\n' +
+'  var cfg = {};\n' +
+'  data.forEach(function(row) {\n' +
+'    var key = row[0], val = row[1];\n' +
+'    if (key === "refs" || key === "clinicians" || key === "cats") {\n' +
+'      try { cfg[key] = JSON.parse(val); } catch(e) { cfg[key] = []; }\n' +
+'    } else {\n' +
+'      cfg[key] = val;\n' +
+'    }\n' +
+'  });\n' +
+'  return cfg;\n' +
+'}\n\n' +
+'function saveRoster(data) {\n' +
+'  var ss = SpreadsheetApp.getActiveSpreadsheet();\n' +
+'  var sh = ss.getSheetByName(CONFIG_SHEET);\n' +
+'  if (!sh) {\n' +
+'    sh = ss.insertSheet(CONFIG_SHEET);\n' +
+'    sh.getRange(1,1,1,2).setValues([["key","value"]]).setFontWeight("bold");\n' +
+'    sh.setFrozenRows(1);\n' +
+'  }\n' +
+'  // Clear and rewrite config\n' +
+'  sh.clearContents();\n' +
+'  sh.getRange(1,1,1,2).setValues([["key","value"]]).setFontWeight("bold");\n' +
+'  var rows = [\n' +
+'    ["refs",       JSON.stringify(data.refs || [])],\n' +
+'    ["clinicians", JSON.stringify(data.clinicians || [])],\n' +
+'    ["cats",       JSON.stringify(data.cats || [])],\n' +
+'    ["campName",   data.campName || "Officials Camp"]\n' +
+'  ];\n' +
+'  sh.getRange(2, 1, rows.length, 2).setValues(rows);\n' +
+'}\n\n' +
+'function getEvals() {\n' +
+'  var ss = SpreadsheetApp.getActiveSpreadsheet();\n' +
+'  var sh = ss.getSheetByName(EVALS_SHEET);\n' +
+'  if (!sh) return [];\n' +
+'  var data = sh.getDataRange().getValues();\n' +
+'  if (data.length < 2) return [];\n' +
+'  var hdr = data[0];\n' +
+'  return data.slice(1).map(function(row) {\n' +
+'    var o = {}; hdr.forEach(function(h,i){ o[h] = row[i]; });\n' +
+'    try { o.scores = JSON.parse(o.scores); } catch(e) {}\n' +
+'    return o;\n' +
+'  });\n' +
+'}\n\n' +
+'function saveEval(ev) {\n' +
+'  var ss = SpreadsheetApp.getActiveSpreadsheet();\n' +
+'  var sh = ss.getSheetByName(EVALS_SHEET);\n' +
+'  if (!sh) {\n' +
+'    sh = ss.insertSheet(EVALS_SHEET);\n' +
+'    sh.appendRow(["id","ts","clinician","refName","refEmail","court","day","time","scores","feedback","avg","final"]);\n' +
+'    sh.setFrozenRows(1); sh.getRange(1,1,1,12).setFontWeight("bold");\n' +
+'  }\n' +
+'  sh.appendRow([ev.id||"",ev.ts||"",ev.clinician||"",ev.refName||"",ev.refEmail||"",\n' +
+'    ev.court||"",ev.day||"",ev.time||"",JSON.stringify(ev.scores||{}),ev.feedback||"",ev.avg||0,ev.final||0]);\n' +
+'}\n\n' +
+'function sendEmail(ev, allRef) {\n' +
+'  var email = ev.refEmail; if (!email) return;\n' +
+'  var camp = ev.campName || "Officials Camp";\n' +
+'  var cfg = getConfig();\n' +
+'  var cats = cfg.cats && cfg.cats.length ? cfg.cats :\n' +
+'    ["Appearance","Judgement","Game Management","Positioning","Mechanics","Communication","Handle Pressure"];\n' +
+'  function bar(v){var s="";for(var i=1;i<=5;i++)s+=i<=v?"<span style=\\"color:#F47820;\\">&#9679;</span>":"<span style=\\"color:#ddd;\\">&#9679;</span>";return s;}\n' +
+'  var rows = "";\n' +
+'  cats.forEach(function(cat){\n' +
+'    var v = ev.scores[cat] || 0;\n' +
+'    rows += "<tr><td style=\\"padding:10px 14px;font-weight:600;border-bottom:1px solid #f0f0f0;\\">"+cat+"</td>"+\n' +
+'      "<td style=\\"padding:10px 14px;border-bottom:1px solid #f0f0f0;\\">"+bar(v)+"</td>"+\n' +
+'      "<td style=\\"padding:10px 14px;font-size:20px;font-weight:700;color:#F47820;border-bottom:1px solid #f0f0f0;text-align:right;\\">"+v+"/5</td></tr>";\n' +
+'  });\n' +
+'  var ta=0,tf=0;\n' +
+'  allRef.forEach(function(e){ta+=(e.avg||0);tf+=(e.final||0);});\n' +
+'  var ra=(ta/allRef.length).toFixed(3),rf=(tf/allRef.length).toFixed(1);\n' +
+'  var html = "<div style=\\"max-width:600px;margin:0 auto;font-family:sans-serif;\\">" +\n' +
+'    "<div style=\\"background:#0a0a0a;border-radius:10px 10px 0 0;padding:24px;text-align:center;\\">" +\n' +
+'    "<div style=\\"font-size:11px;color:#F47820;letter-spacing:0.15em;text-transform:uppercase;\\">"+camp+"</div>" +\n' +
+'    "<div style=\\"font-family:Georgia,serif;font-size:28px;color:#fff;margin:8px 0 4px;\\">Evaluation Report</div>" +\n' +
+'    "<div style=\\"font-size:14px;color:rgba(255,255,255,0.5);\\">"+ev.refName+"</div></div>" +\n' +
+'    "<div style=\\"background:#F47820;padding:16px;text-align:center;\\">" +\n' +
+'    "<div style=\\"display:inline-block;margin:0 16px;\\"><div style=\\"font-size:32px;color:#fff;font-weight:700;\\">"+ev.avg.toFixed(3)+"</div><div style=\\"font-size:10px;color:rgba(255,255,255,0.75);text-transform:uppercase;\\">This Game</div></div>" +\n' +
+'    "<div style=\\"display:inline-block;margin:0 16px;\\"><div style=\\"font-size:32px;color:#fff;font-weight:700;\\">"+ev.final+"</div><div style=\\"font-size:10px;color:rgba(255,255,255,0.75);text-transform:uppercase;\\">Final /100</div></div>" +\n' +
+'    (allRef.length>1?"<div style=\\"display:inline-block;margin:0 16px;\\"><div style=\\"font-size:32px;color:#fff;font-weight:700;\\">"+ra+"</div><div style=\\"font-size:10px;color:rgba(255,255,255,0.75);text-transform:uppercase;\\">Camp Avg ("+allRef.length+" games)</div></div>":"") +\n' +
+'    "</div><div style=\\"background:#fff;border-radius:0 0 10px 10px;padding:24px;\\">" +\n' +
+'    "<div style=\\"font-size:12px;color:#999;margin-bottom:16px;\\">Clinician: <strong>"+ev.clinician+"</strong> &middot; "+ev.day+" &middot; Court "+ev.court+" &middot; "+ev.time+"</div>" +\n' +
+'    "<h3 style=\\"font-size:16px;margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid #F47820;\\">Category Scores</h3>" +\n' +
+'    "<table style=\\"width:100%;border-collapse:collapse;\\">"+rows+"</table>" +\n' +
+'    (ev.feedback?"<div style=\\"margin-top:16px;background:#f8f8f8;border-left:4px solid #F47820;padding:12px 16px;font-style:italic;color:#444;\\">"+ev.feedback+"</div>":"") +\n' +
+'    "</div><div style=\\"text-align:center;padding:12px;font-size:11px;color:#aaa;\\">"+camp+" Evaluation System</div></div>";\n' +
+'  MailApp.sendEmail({to:email, subject:camp+" — Eval: "+ev.refName+" ("+ev.day+", Court "+ev.court+")", htmlBody:html});\n' +
+'}\n\n' +
+'function testScript(){Logger.log(JSON.stringify(getAll()));}';
+
+  var el = document.getElementById('script-box');
+  if (el) el.textContent = code;
 }
 
-function copyScript(){
-  var text=(document.getElementById('script-box')||{}).textContent||'';
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(text).then(function(){showToast('✅ Copied!');}).catch(function(){showToast('Select and copy manually.');});
+function copyScript() {
+  var text = (document.getElementById('script-box')||{}).textContent || '';
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function(){ showToast('✅ Copied!'); }).catch(function(){ showToast('Select and copy manually.'); });
   } else { showToast('Select and copy from the box.'); }
 }
 
 // ── UTILS ──────────────────────────────────────
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function slug(s){return s.toLowerCase().replace(/[^a-z0-9]/g,'_');}
-function initials(name){return name.split(' ').map(function(p){return p[0]||'';}).join('').slice(0,2).toUpperCase();}
-function setFb(id,msg,color){var el=document.getElementById(id+'-fb');if(!el)return;el.textContent=msg;
-el.style.color=color||'var(--dark)';setTimeout(function(){if(el)el.textContent='';},5000);}
-function showToast(msg,dur){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},dur||2500);}
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function slug(s){ return s.toLowerCase().replace(/[^a-z0-9]/g,'_'); }
+function initials(name){ return name.split(' ').map(function(p){ return p[0]||''; }).join('').slice(0,2).toUpperCase(); }
+function setFb(id,msg,color){ var el=document.getElementById(id+'-fb'); if(!el)return; el.textContent=msg; el.style.color=color||'var(--dark)'; setTimeout(function(){if(el)el.textContent='';},5000); }
+function showToast(msg,dur){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},dur||2800); }
 
 document.addEventListener('DOMContentLoaded', init);
 </script>
