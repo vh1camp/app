@@ -18,6 +18,79 @@
   --shadow:0 2px 12px rgba(0,0,0,0.08);
 }
 body{font-family:'Inter',sans-serif;background:var(--gray);color:var(--dark);min-height:100vh;line-height:1.5;}
+
+/* ── APP PASSWORD GATE ─────────────────────────────────────────── */
+#app-gate{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--black);
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;
+}
+#app-gate .gate-zebra{
+  position:absolute;inset:0;
+  background:repeating-linear-gradient(-45deg,transparent,transparent 12px,rgba(255,255,255,0.015) 12px,rgba(255,255,255,0.015) 24px);
+  pointer-events:none;
+}
+.gate-box{
+  position:relative;z-index:1;
+  background:#111;border-radius:14px;
+  width:100%;max-width:380px;
+  border:1px solid rgba(255,255,255,0.08);
+  overflow:hidden;
+  box-shadow:0 24px 80px rgba(0,0,0,0.6);
+}
+.gate-top{
+  background:repeating-linear-gradient(-45deg,#0a0a0a,#0a0a0a 8px,#111 8px,#111 16px);
+  padding:32px 32px 28px;
+  text-align:center;
+  border-bottom:3px solid var(--orange);
+}
+.gate-icon{
+  width:56px;height:56px;background:var(--orange);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;margin:0 auto 16px;
+  box-shadow:0 0 32px rgba(244,120,32,0.4);
+}
+.gate-title{
+  font-family:'Bebas Neue',sans-serif;font-size:28px;
+  color:#fff;letter-spacing:0.06em;line-height:1;
+}
+.gate-sub{font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:0.12em;text-transform:uppercase;margin-top:6px;}
+.gate-body{padding:28px 32px 32px;}
+.gate-label{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:8px;display:block;}
+.gate-inp{
+  width:100%;background:#1a1a1a;border:2px solid rgba(255,255,255,0.1);
+  border-radius:var(--radius-sm);padding:14px 16px;
+  font-family:'Inter',sans-serif;font-size:18px;font-weight:600;
+  color:#fff;outline:none;letter-spacing:0.15em;text-align:center;
+  transition:border-color 0.2s,box-shadow 0.2s;
+  -webkit-appearance:none;appearance:none;
+}
+.gate-inp:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(244,120,32,0.2);}
+.gate-inp.shake{animation:shake 0.4s ease;}
+.gate-inp.err-flash{border-color:var(--red);box-shadow:0 0 0 3px rgba(192,57,43,0.2);}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-8px)}
+  40%{transform:translateX(8px)}
+  60%{transform:translateX(-5px)}
+  80%{transform:translateX(5px)}
+}
+.gate-err{color:#e05555;font-size:12px;font-weight:600;text-align:center;min-height:18px;margin-top:10px;}
+.gate-btn{
+  display:block;width:100%;padding:15px;margin-top:20px;
+  background:var(--orange);border:none;border-radius:var(--radius-sm);
+  font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.08em;
+  color:#fff;cursor:pointer;transition:background 0.15s,transform 0.1s;
+}
+.gate-btn:hover{background:#d96a14;}
+.gate-btn:active{transform:scale(0.98);}
+.gate-attempts{font-size:11px;color:rgba(255,255,255,0.25);text-align:center;margin-top:14px;}
+.gate-court-bar{height:4px;background:repeating-linear-gradient(90deg,var(--orange),var(--orange) 30px,#000 30px,#000 60px);}
+
+/* ── REST OF APP (hidden until unlocked) ─────────────────────── */
+#app-shell{display:none;}
+
 .app-header{background:var(--black);position:relative;overflow:hidden;}
 .header-zebra{position:absolute;inset:0;background:repeating-linear-gradient(-45deg,transparent,transparent 8px,rgba(255,255,255,0.03) 8px,rgba(255,255,255,0.03) 16px);}
 .header-inner{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;gap:12px;}
@@ -166,9 +239,35 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 </head>
 <body>
 
+<!-- ── APP PASSWORD GATE ──────────────────────────────────────────── -->
+<div id="app-gate">
+  <div class="gate-zebra"></div>
+  <div class="gate-box">
+    <div class="gate-court-bar"></div>
+    <div class="gate-top">
+      <div class="gate-icon">🏀</div>
+      <div class="gate-title" id="gate-camp-name">Officials Camp</div>
+      <div class="gate-sub">Evaluation System · Restricted Access</div>
+    </div>
+    <div class="gate-body">
+      <label class="gate-label">Enter Access Password</label>
+      <input type="password" class="gate-inp" id="gate-inp" placeholder="••••••••"
+        maxlength="32" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')tryGate()"
+        oninput="clearGateErr()">
+      <div class="gate-err" id="gate-err"></div>
+      <button class="gate-btn" onclick="tryGate()">ENTER →</button>
+      <div class="gate-attempts" id="gate-attempts"></div>
+    </div>
+    <div class="gate-court-bar"></div>
+  </div>
+</div>
+
+<!-- ── MAIN APP (hidden until password accepted) ──────────────────── -->
+<div id="app-shell">
+
 <div id="toast" class="toast"></div>
 
-<!-- Sync banner shown while loading from Sheets -->
 <div class="sync-banner" id="sync-banner">
   <div class="spinner"></div>
   <span id="sync-txt">Syncing from Google Sheets...</span>
@@ -353,8 +452,15 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <input type="text" id="cfg-url" placeholder="https://script.google.com/macros/s/.../exec" oninput="saveCfg()"></div>
       <div class="field"><label class="flabel">Camp Name</label>
         <input type="text" id="cfg-camp" placeholder="e.g. VH1 BB Camp 2025" oninput="saveCampName()"></div>
-      <div class="field"><label class="flabel">Admin PIN</label>
+      <div class="field"><label class="flabel">Admin PIN <span style="font-weight:400;text-transform:none;font-size:10px;color:var(--gray-text);">(for Setup tab)</span></label>
         <input type="text" id="cfg-pin" placeholder="1234" maxlength="8" oninput="saveCfg()"></div>
+      <div class="field">
+        <label class="flabel">App Password <span style="font-weight:400;text-transform:none;font-size:10px;color:var(--gray-text);">(locks entire app on open)</span></label>
+        <input type="text" id="cfg-apppass" placeholder="camp2025" oninput="saveCfg()">
+        <div style="margin-top:6px;font-size:11px;color:var(--gray-text);line-height:1.6;">
+          🔒 Anyone opening this page must enter this password first. Leave blank to disable the gate.
+        </div>
+      </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
         <button class="btn btn-s" style="flex:1;" onclick="testConn()">🔌 Test Connection</button>
         <button class="btn btn-s" style="flex:1;" onclick="openPing()">🌐 Open URL in Browser</button>
@@ -440,11 +546,138 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 </div>
 
+</div><!-- end #app-shell -->
+
 <script>
+// ── APP GATE ───────────────────────────────────
+var GATE_SESSION_KEY = 'camp_gate_unlocked';
+var GATE_ATTEMPTS = 0;
+var GATE_MAX = 5;
+var GATE_LOCKOUT_KEY = 'camp_gate_lockout';
+
+function initGate() {
+  // Load app password from storage to display camp name on gate
+  try {
+    var s = localStorage.getItem('camp_c');
+    if (s) {
+      var saved = JSON.parse(s);
+      if (saved.campName) {
+        document.getElementById('gate-camp-name').textContent = saved.campName;
+      }
+    }
+  } catch(e) {}
+
+  var appPass = getAppPassword();
+
+  // No password set — skip gate entirely
+  if (!appPass) {
+    unlockApp();
+    return;
+  }
+
+  // Already unlocked this session
+  if (sessionStorage.getItem(GATE_SESSION_KEY) === 'yes') {
+    unlockApp();
+    return;
+  }
+
+  // Check lockout
+  var lockoutUntil = parseInt(localStorage.getItem(GATE_LOCKOUT_KEY) || '0');
+  if (Date.now() < lockoutUntil) {
+    var secs = Math.ceil((lockoutUntil - Date.now()) / 1000);
+    showGateErr('Too many attempts. Try again in ' + secs + 's.');
+    document.getElementById('gate-inp').disabled = true;
+    document.querySelector('.gate-btn').disabled = true;
+    setTimeout(function() {
+      document.getElementById('gate-inp').disabled = false;
+      document.querySelector('.gate-btn').disabled = false;
+      clearGateErr();
+      GATE_ATTEMPTS = 0;
+    }, lockoutUntil - Date.now());
+    return;
+  }
+
+  // Show gate
+  document.getElementById('app-gate').style.display = 'flex';
+  document.getElementById('gate-inp').focus();
+}
+
+function getAppPassword() {
+  try {
+    var s = localStorage.getItem('camp_c');
+    if (s) {
+      var saved = JSON.parse(s);
+      return saved.appPassword || '';
+    }
+  } catch(e) {}
+  return '';
+}
+
+function tryGate() {
+  var inp = document.getElementById('gate-inp');
+  var val = inp.value;
+  var appPass = getAppPassword();
+
+  if (!appPass) { unlockApp(); return; }
+
+  if (val === appPass) {
+    sessionStorage.setItem(GATE_SESSION_KEY, 'yes');
+    GATE_ATTEMPTS = 0;
+    localStorage.removeItem(GATE_LOCKOUT_KEY);
+
+    // Animate out
+    var gate = document.getElementById('app-gate');
+    gate.style.transition = 'opacity 0.35s ease';
+    gate.style.opacity = '0';
+    setTimeout(function() {
+      gate.style.display = 'none';
+      unlockApp();
+    }, 350);
+  } else {
+    GATE_ATTEMPTS++;
+    inp.classList.add('shake', 'err-flash');
+    setTimeout(function() { inp.classList.remove('shake', 'err-flash'); inp.value = ''; }, 400);
+
+    var remaining = GATE_MAX - GATE_ATTEMPTS;
+    if (remaining <= 0) {
+      var lockUntil = Date.now() + 60000; // 60-second lockout
+      localStorage.setItem(GATE_LOCKOUT_KEY, String(lockUntil));
+      showGateErr('Too many attempts. Locked for 60 seconds.');
+      inp.disabled = true;
+      document.querySelector('.gate-btn').disabled = true;
+      document.getElementById('gate-attempts').textContent = '';
+      setTimeout(function() {
+        inp.disabled = false;
+        document.querySelector('.gate-btn').disabled = false;
+        clearGateErr();
+        GATE_ATTEMPTS = 0;
+      }, 60000);
+    } else {
+      showGateErr('Incorrect password.');
+      document.getElementById('gate-attempts').textContent =
+        remaining + ' attempt' + (remaining === 1 ? '' : 's') + ' remaining';
+    }
+  }
+}
+
+function showGateErr(msg) {
+  document.getElementById('gate-err').textContent = msg;
+}
+function clearGateErr() {
+  document.getElementById('gate-err').textContent = '';
+}
+
+function unlockApp() {
+  document.getElementById('app-gate').style.display = 'none';
+  document.getElementById('app-shell').style.display = 'block';
+  init(); // Start the main app
+}
+
 // ── STATE ──────────────────────────────────────
 var DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbwdjuVMQCuiGMI1Xx2Z3e5xtdN7h9LGRPypmjQN64UiodHYY6-UiZOAEiC9vBX5zELy/exec';
 var C = {
   sheetsUrl: DEFAULT_URL, adminPin:'1234', campName:'Officials Camp',
+  appPassword: 'camp2025',
   refs:[], refEmails:{}, clinicians:[],
   cats:['Appearance','Judgement','Game Management','Positioning','Mechanics','Communication','Handle Pressure']
 };
@@ -455,13 +688,11 @@ var PTAB = null;
 
 // ── INIT ───────────────────────────────────────
 function init() {
-  // Load URL from localStorage first (needed to sync everything else)
   try {
     var s = localStorage.getItem('camp_c');
     if (s) {
       var saved = JSON.parse(s);
       Object.assign(C, saved);
-      // Always keep the hardcoded URL if nothing saved
       if (!C.sheetsUrl) C.sheetsUrl = DEFAULT_URL;
     }
   } catch(e){}
@@ -475,11 +706,8 @@ function init() {
   renderScript();
   document.getElementById('campYear').textContent = new Date().getFullYear();
 
-  // If we have a Sheets URL, sync everything from Sheets first
   if (C.sheetsUrl) {
-    syncFromSheets(function() {
-      finishInit();
-    });
+    syncFromSheets(function() { finishInit(); });
   } else {
     finishInit();
   }
@@ -494,44 +722,32 @@ function finishInit() {
   checkClinWarning();
 }
 
-// ── SYNC FROM SHEETS (loads refs, clinicians, evals, config) ──
+// ── SYNC FROM SHEETS ───────────────────────────
 function syncFromSheets(callback) {
   showSyncBanner('Syncing from Google Sheets...');
   jsonp(C.sheetsUrl + '?action=getAll', 'sync' + Date.now())
     .then(function(d) {
       if (d) {
-        // Load refs
         if (Array.isArray(d.refs) && d.refs.length) {
           C.refs = d.refs.map(function(r){ return r.name; });
           C.refEmails = {};
           d.refs.forEach(function(r){ if(r.email) C.refEmails[r.name] = r.email; });
         }
-        // Load clinicians
-        if (Array.isArray(d.clinicians) && d.clinicians.length) {
-          C.clinicians = d.clinicians;
-        }
-        // Load categories
-        if (Array.isArray(d.cats) && d.cats.length) {
-          C.cats = d.cats;
-        }
-        // Load camp name
+        if (Array.isArray(d.clinicians) && d.clinicians.length) C.clinicians = d.clinicians;
+        if (Array.isArray(d.cats) && d.cats.length) C.cats = d.cats;
         if (d.campName) {
           C.campName = d.campName;
           document.getElementById('campName').textContent = C.campName;
         }
-        // Load evals — merge with local, avoid duplicates
         if (Array.isArray(d.evals) && d.evals.length) {
           var ids = new Set(EVS.map(function(e){ return String(e.id); }));
-          d.evals.forEach(function(e){
-            if (e && e.id && !ids.has(String(e.id))) EVS.push(e);
-          });
+          d.evals.forEach(function(e){ if (e && e.id && !ids.has(String(e.id))) EVS.push(e); });
           saveEvs();
         }
         saveCfg();
         setSt('conn', '✅ Synced · ' + C.refs.length + ' officials · ' + C.clinicians.length + ' clinicians');
       }
-      hideSyncBanner();
-      renderCats();
+      hideSyncBanner(); renderCats();
       if (callback) callback();
     })
     .catch(function() {
@@ -574,9 +790,7 @@ function saveRosters() {
       showToast('✅ Saved! All devices will sync on next open.');
       setFb('save-refs', '✅ Saved to Sheets', 'var(--green)');
       setFb('save-clin', '✅ Saved to Sheets', 'var(--green)');
-    } else {
-      showToast('⚠️ Save failed — check connection.');
-    }
+    } else { showToast('⚠️ Save failed — check connection.'); }
   };
   var sc = document.createElement('script');
   sc.id = 'j-'+cbName; sc.src = url;
@@ -592,14 +806,16 @@ function checkClinWarning() {
 
 function applyConfig() {
   document.getElementById('campName').textContent = C.campName || 'Officials Camp';
-  var u = document.getElementById('cfg-url');   if(u) u.value = C.sheetsUrl || '';
-  var n = document.getElementById('cfg-camp');  if(n) n.value = C.campName || '';
-  var p = document.getElementById('cfg-pin');   if(p) p.value = C.adminPin || '1234';
+  var u = document.getElementById('cfg-url');     if(u) u.value = C.sheetsUrl || '';
+  var n = document.getElementById('cfg-camp');    if(n) n.value = C.campName || '';
+  var p = document.getElementById('cfg-pin');     if(p) p.value = C.adminPin || '1234';
+  var ap = document.getElementById('cfg-apppass');if(ap) ap.value = C.appPassword || '';
 }
 
 function saveCfg() {
-  C.sheetsUrl = (document.getElementById('cfg-url')||{}).value || '';
-  C.adminPin  = (document.getElementById('cfg-pin')||{}).value || '1234';
+  C.sheetsUrl   = (document.getElementById('cfg-url')||{}).value || '';
+  C.adminPin    = (document.getElementById('cfg-pin')||{}).value || '1234';
+  C.appPassword = (document.getElementById('cfg-apppass')||{}).value || '';
   localStorage.setItem('camp_c', JSON.stringify(C));
 }
 
@@ -1166,7 +1382,6 @@ function renderScript() {
 '  if (cb) return ContentService.createTextOutput(cb+"("+j+");").setMimeType(ContentService.MimeType.JAVASCRIPT);\n' +
 '  return ContentService.createTextOutput(j).setMimeType(ContentService.MimeType.JSON);\n' +
 '}\n\n' +
-'// Returns everything the app needs on load\n' +
 'function getAll() {\n' +
 '  var ss = SpreadsheetApp.getActiveSpreadsheet();\n' +
 '  var cfg = getConfig(ss);\n' +
@@ -1202,7 +1417,6 @@ function renderScript() {
 '    sh.getRange(1,1,1,2).setValues([["key","value"]]).setFontWeight("bold");\n' +
 '    sh.setFrozenRows(1);\n' +
 '  }\n' +
-'  // Clear and rewrite config\n' +
 '  sh.clearContents();\n' +
 '  sh.getRange(1,1,1,2).setValues([["key","value"]]).setFontWeight("bold");\n' +
 '  var rows = [\n' +
@@ -1291,7 +1505,8 @@ function initials(name){ return name.split(' ').map(function(p){ return p[0]||''
 function setFb(id,msg,color){ var el=document.getElementById(id+'-fb'); if(!el)return; el.textContent=msg; el.style.color=color||'var(--dark)'; setTimeout(function(){if(el)el.textContent='';},5000); }
 function showToast(msg,dur){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},dur||2800); }
 
-document.addEventListener('DOMContentLoaded', init);
+// ── BOOT ───────────────────────────────────────
+document.addEventListener('DOMContentLoaded', initGate);
 </script>
 </body>
 </html>
