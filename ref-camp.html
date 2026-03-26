@@ -442,8 +442,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 <script>
 // ── STATE ──────────────────────────────────────
+var DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbwdjuVMQCuiGMI1Xx2Z3e5xtdN7h9LGRPypmjQN64UiodHYY6-UiZOAEiC9vBX5zELy/exec';
 var C = {
-  sheetsUrl:'', adminPin:'1234', campName:'Officials Camp',
+  sheetsUrl: DEFAULT_URL, adminPin:'1234', campName:'Officials Camp',
   refs:[], refEmails:{}, clinicians:[],
   cats:['Appearance','Judgement','Game Management','Positioning','Mechanics','Communication','Handle Pressure']
 };
@@ -457,7 +458,12 @@ function init() {
   // Load URL from localStorage first (needed to sync everything else)
   try {
     var s = localStorage.getItem('camp_c');
-    if (s) Object.assign(C, JSON.parse(s));
+    if (s) {
+      var saved = JSON.parse(s);
+      Object.assign(C, saved);
+      // Always keep the hardcoded URL if nothing saved
+      if (!C.sheetsUrl) C.sheetsUrl = DEFAULT_URL;
+    }
   } catch(e){}
   try {
     var s = localStorage.getItem('camp_e');
