@@ -588,10 +588,9 @@ function startApp() {
   applySetupFields();
   renderCats();
   renderScript();
+  finishInit(); // populate from local data immediately
   if (C.sheetsUrl) {
-    syncFromSheets(finishInit);
-  } else {
-    finishInit();
+    syncFromSheets(finishInit); // re-populate after sync with fresh data
   }
 }
 
@@ -669,6 +668,23 @@ document.addEventListener("DOMContentLoaded", function() {
   if (bs) bs.addEventListener("input", renderBoard);
   var ci = document.getElementById("add-ci");
   if (ci) ci.addEventListener("keydown", function(e) { if (e.key === "Enter") addClin(); });
+
+  // Event delegation for ref-card clicks — avoids inline onclick quote issues
+  var refList = document.getElementById("ref-list");
+  if (refList) {
+    refList.addEventListener("click", function(e) {
+      var card = e.target.closest(".ref-card");
+      if (!card) return;
+      var done = card.getAttribute("data-done") === "1";
+      var name = card.getAttribute("data-name");
+      if (done) {
+        showToast("Already evaluated for this game.");
+      } else if (name) {
+        startEval(name);
+      }
+    });
+  }
+
   initGate();
 });
 
@@ -735,7 +751,7 @@ function renderRefs() {
   refs.forEach(function(r) {
     var key = CUR.clinician + "|" + r + "|" + CUR.court + "|" + CUR.day + "|" + CUR.time;
     var done = doneKeys.has(key);
-    html += '<div class="ref-card' + (done ? ' done' : '') + '" onclick="' + (done ? 'showToast(&quot;Already evaluated for this game.&quot;)' : 'startEval(' + JSON.stringify(r) + ')') + '">';
+    html += '<div class="ref-card' + (done ? ' done' : '') + '" data-name="' + escAttr(r) + '" data-done="' + (done ? '1' : '0') + '">';
     html += '<div class="av' + (done ? ' green' : '') + '">' + initials(r) + '</div>';
     html += '<div class="ri"><div class="rn">' + escHtml(r) + '</div><div class="rm">' + (done ? 'Evaluated this session' : 'Tap to evaluate') + '</div></div>';
     html += '<div class="' + (done ? 'rs-done' : 'rs-pend') + '">' + (done ? '&#10003; Done' : 'Pending') + '</div>';
