@@ -1189,13 +1189,21 @@ function sendToSheets(rec, allRef) {
   if (!C.sheetsUrl) return;
   var cb = "gsSave_" + Date.now();
   var data = encodeURIComponent(JSON.stringify({action:"addEval", eval:rec, allRefEvals:allRef || [rec]}));
-  window[cb] = function(r) {
+  var to = setTimeout(function() {
     delete window[cb];
-    if (r && r.ok) showToast("Saved to Sheets" + (rec.refEmail ? " · Email sent" : ""));
+    var s = document.getElementById("j-" + cb); if (s) s.remove();
+    showToast("Sheets save timed out.");
+  }, 15000);
+  window[cb] = function(r) {
+    clearTimeout(to); delete window[cb];
+    var s = document.getElementById("j-" + cb); if (s) s.remove();
+    if (r && r.ok) showToast("Saved to Sheets" + (rec.refEmail ? " \u00b7 Email sent" : ""));
+    else showToast("Sheets error: " + (r && r.error ? r.error : "unknown"));
   };
   var sc = document.createElement("script");
+  sc.id = "j-" + cb;
   sc.src = C.sheetsUrl + "?action=addEval&data=" + data + "&callback=" + cb;
-  sc.onerror = function() { delete window[cb]; };
+  sc.onerror = function() { clearTimeout(to); delete window[cb]; sc.remove(); showToast("Failed to reach Sheets."); };
   document.head.appendChild(sc);
 }
 
@@ -1281,12 +1289,12 @@ function renderScript() {
     "    if (p.action === 'ping') res = {ok:true, ts:new Date().toISOString()};",
     "    else if (p.action === 'getAll') res = getAll();",
     "    else if (p.action === 'addEval') {",
-    "      var body = JSON.parse(decodeURIComponent(p.data || '{}'));",
+    "      var body = JSON.parse(p.data || '{}');",
     "      saveEval(body.eval);",
     "      if (body.eval && body.eval.refEmail) sendEmail(body.eval, body.allRefEvals || [body.eval]);",
     "      res = {ok:true};",
     "    } else if (p.action === 'saveRoster') {",
-    "      var body = JSON.parse(decodeURIComponent(p.data || '{}'));",
+    "      var body = JSON.parse(p.data || '{}');",
     "      saveRoster(body); res = {ok:true};",
     "    } else res = {error:'Unknown action'};",
     "  } catch(err) { res = {error:err.toString()}; }",
