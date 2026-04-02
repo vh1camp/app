@@ -573,7 +573,7 @@ function unlockApp() {
 function loadConfig() {
   try {
     var s = localStorage.getItem("camp_c");
-    if (s) { var saved = JSON.parse(s); Object.assign(C, saved); }
+    if (s) { var saved = JSON.parse(s); var pw = C.appPassword; Object.assign(C, saved); C.appPassword = pw; }
     if (!C.sheetsUrl) C.sheetsUrl = DEFAULT_URL;
   } catch(e) {}
   try {
@@ -609,7 +609,7 @@ function saveConfig() {
   var ap = document.getElementById("cfg-apppass");
   if (u) C.sheetsUrl = u.value || "";
   if (n) C.campName = n.value || "VH1 Officials Camp";
-  if (ap) C.appPassword = ap.value || "";
+  // if (ap) C.appPassword = ap.value || "";
   localStorage.setItem("camp_c", JSON.stringify(C));
   var cn = document.getElementById("campName");
   if (cn) cn.textContent = C.campName;
