@@ -144,7 +144,6 @@ select.form-select:focus{outline:none;border-color:var(--orange)}
   <nav class="tab-nav">
     <button class="tab-btn active" onclick="switchTab('evaluate')">Evaluate</button>
     <button class="tab-btn" onclick="switchTab('rankings')">Rankings</button>
-    <button class="tab-btn" onclick="switchTab('top10')">Top 10</button>
     <button class="tab-btn" onclick="switchTab('campers')">Campers</button>
     <button class="tab-btn" onclick="switchTab('clinicians')">Clinicians</button>
   </nav>
@@ -178,12 +177,6 @@ select.form-select:focus{outline:none;border-color:var(--orange)}
   <div class="tab-content" id="tab-rankings">
     <div class="filter-row" id="rankFilter"></div>
     <div id="rankingsList"></div>
-  </div>
-
-  <!-- TOP 10 -->
-  <div class="tab-content" id="tab-top10">
-    <div class="section-label" style="margin-bottom:1rem">Top 10 Campers</div>
-    <div id="top10List"></div>
   </div>
 
   <!-- CAMPERS -->
@@ -324,12 +317,14 @@ function buildEmailBody(camper,evals){
 // RANKINGS
 function renderRankings(){
   const fr=document.getElementById('rankFilter');fr.innerHTML='';
-  ['overall',...CONFIG.CATEGORIES].forEach(cat=>{const c=document.createElement('button');c.className=`filter-chip ${cat===rankSortCategory?'active':''}`;c.textContent=cat==='overall'?'Overall':cat;c.onclick=()=>{rankSortCategory=cat;renderRankings();};fr.appendChild(c);});
+  ['overall',...CONFIG.CATEGORIES,'top10'].forEach(cat=>{const c=document.createElement('button');c.className=`filter-chip ${cat===rankSortCategory?'active':''}`;c.textContent=cat==='overall'?'Overall':cat==='top10'?'Top 10':cat;c.onclick=()=>{rankSortCategory=cat;renderRankings();};fr.appendChild(c);});
   const cs=buildCamperScores();
   let sorted=Object.values(cs);
-  if(rankSortCategory==='overall')sorted.sort((a,b)=>b.overall-a.overall);else sorted.sort((a,b)=>(b.catAverages[rankSortCategory]||0)-(a.catAverages[rankSortCategory]||0));
+  if(rankSortCategory==='top10'){sorted=sorted.filter(e=>e.top10);sorted.sort((a,b)=>b.overall-a.overall);}
+  else if(rankSortCategory==='overall')sorted.sort((a,b)=>b.overall-a.overall);
+  else sorted.sort((a,b)=>(b.catAverages[rankSortCategory]||0)-(a.catAverages[rankSortCategory]||0));
   const list=document.getElementById('rankingsList');
-  if(!sorted.length){list.innerHTML='<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">No evaluations yet</div></div>';return;}
+  if(!sorted.length){list.innerHTML='<div class="empty-state"><div class="empty-state-icon">'+(rankSortCategory==='top10'?'⭐':'📊')+'</div><div class="empty-state-text">'+(rankSortCategory==='top10'?'No Top 10 campers yet':'No evaluations yet')+'</div></div>';return;}
   list.innerHTML=renderRankCards(sorted);
 }
 
@@ -372,7 +367,7 @@ async function uploadCSVCampers(){const btn=document.getElementById('csvUploadBt
 
 // UTILS
 function closeModal(id){document.getElementById(id).classList.remove('active');}
-function switchTab(tab){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.textContent.toLowerCase().trim()===tab||b.textContent.toLowerCase().trim()==='top 10'&&tab==='top10'));document.querySelectorAll('.tab-content').forEach(el=>el.classList.toggle('active',el.id===`tab-${tab}`));if(tab==='rankings')renderRankings();if(tab==='top10')renderTop10();}
+function switchTab(tab){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.textContent.toLowerCase().trim()===tab));document.querySelectorAll('.tab-content').forEach(el=>el.classList.toggle('active',el.id===`tab-${tab}`));if(tab==='rankings')renderRankings();}
 function showToast(msg,err=false){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast ${err?'error':''} show`;setTimeout(()=>t.classList.remove('show'),2500);}
 </script>
 </body>
