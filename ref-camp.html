@@ -236,7 +236,7 @@ async function loadAllData(){try{campers=await supaFetch('campers','GET',null,'?
 function populateCamperSelect(){const s=document.getElementById('evalCamperSelect');s.innerHTML='<option value="">— Choose a camper —</option>';campers.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=`${c.first_name} ${c.last_name}`;s.appendChild(o);});}
 function populateClinicianSelect(){const s=document.getElementById('evalClinician');s.innerHTML='<option value="">— Select clinician —</option>';clinicians.forEach(c=>{const o=document.createElement('option');o.value=c.name;o.textContent=c.name;s.appendChild(o);});}
 
-function onCamperSelected(){const cid=document.getElementById('evalCamperSelect').value;const form=document.getElementById('evalForm');if(!cid){form.style.display='none';return;}form.style.display='block';resetEvalForm();}
+function onCamperSelected(){const cid=document.getElementById('evalCamperSelect').value;const form=document.getElementById('evalForm');if(!cid){form.style.display='none';return;}form.style.display='block';buildEvalForm();resetEvalForm();}
 
 function resetEvalForm(){CONFIG.CATEGORIES.forEach((_,i)=>{document.querySelectorAll(`#scoreBoxes_${i} .score-box`).forEach(b=>b.classList.remove('selected'));document.getElementById(`scoreDisplay_${i}`).textContent='—';});document.getElementById('evalComments').value='';document.getElementById('evalDate').value=new Date().toISOString().split('T')[0];document.getElementById('evalCourt').value='';document.getElementById('evalTime').value='';document.getElementById('evalClinician').value='';document.getElementById('submitStatus').innerHTML='';resetYN();updateOverall();}
 
