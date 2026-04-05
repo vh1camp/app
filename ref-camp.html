@@ -231,7 +231,7 @@ function attemptLogin(){const pw=document.getElementById('loginPassword').value;
 function logout(){document.getElementById('loginScreen').style.display='flex';document.getElementById('appContainer').style.display='none';document.getElementById('loginPassword').value='';document.getElementById('loginError').style.display='none';}
 
 // DATA
-async function loadAllData(){try{campers=await supaFetch('campers','GET',null,'?order=last_name.asc')||[];evaluations=await supaFetch('evaluations','GET',null,'?order=created_at.desc')||[];clinicians=await supaFetch('clinicians','GET',null,'?order=name.asc')||[];}catch(e){console.error(e);}populateCamperSelect();populateClinicianSelect();renderCampersList();renderCliniciansList();renderRankings();renderTop10();buildEvalForm();}
+async function loadAllData(){try{campers=await supaFetch('campers','GET',null,'?order=last_name.asc')||[];evaluations=await supaFetch('evaluations','GET',null,'?order=created_at.desc')||[];clinicians=await supaFetch('clinicians','GET',null,'?order=name.asc')||[];}catch(e){console.error(e);}populateCamperSelect();populateClinicianSelect();renderCampersList();renderCliniciansList();renderRankings();buildEvalForm();}
 
 function populateCamperSelect(){const s=document.getElementById('evalCamperSelect');s.innerHTML='<option value="">— Choose a camper —</option>';campers.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=`${c.first_name} ${c.last_name}`;s.appendChild(o);});}
 function populateClinicianSelect(){const s=document.getElementById('evalClinician');s.innerHTML='<option value="">— Select clinician —</option>';clinicians.forEach(c=>{const o=document.createElement('option');o.value=c.name;o.textContent=c.name;s.appendChild(o);});}
