@@ -181,16 +181,21 @@ select.form-select:focus{outline:none;border-color:var(--orange)}
 
   <!-- CAMPERS -->
   <div class="tab-content" id="tab-campers">
-    <div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap">
-      <button class="btn btn-outline btn-sm" onclick="openAddCamper()" style="flex:1;min-width:130px">＋ Add Camper</button>
-      <button class="btn btn-outline btn-sm" onclick="openCSVUpload()" style="flex:1;min-width:130px">📄 Mass Upload</button>
+    <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+      <button class="btn btn-outline btn-sm" onclick="openAddCamper()" style="flex:1;min-width:130px">&#xff0b; Add Camper</button>
+      <button class="btn btn-outline btn-sm" onclick="openCSVUpload()" style="flex:1;min-width:130px">&#128196; Mass Upload</button>
+      <button class="btn btn-outline btn-sm" onclick="deleteAllCampers()" style="flex:1;min-width:130px;border-color:var(--red);color:var(--red)">&#128465; Delete All</button>
     </div>
+    <input type="search" class="form-input" id="camperSearch" placeholder="Search campers..." oninput="renderCampersList()" style="margin-bottom:1rem">
     <div id="campersList"></div>
   </div>
 
   <!-- CLINICIANS -->
   <div class="tab-content" id="tab-clinicians">
-    <button class="btn btn-outline btn-sm" onclick="openAddClinician()" style="margin-bottom:1.25rem">＋ Add Clinician</button>
+    <div style="display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap">
+      <button class="btn btn-outline btn-sm" onclick="openAddClinician()" style="flex:1;min-width:130px">＋ Add Clinician</button>
+      <button class="btn btn-outline btn-sm" onclick="deleteAllClinicians()" style="flex:1;min-width:130px;border-color:var(--red);color:var(--red)">🗑 Delete All</button>
+    </div>
     <div id="cliniciansList"></div>
   </div>
 </div>
@@ -348,16 +353,18 @@ function renderRankCards(sorted){
 }
 
 // CAMPERS
-function renderCampersList(){const l=document.getElementById('campersList');if(!campers.length){l.innerHTML='<div class="empty-state"><div class="empty-state-icon">🏀</div><div class="empty-state-text">No campers yet</div></div>';return;}l.innerHTML=campers.map(c=>`<div class="camper-row"><div><div class="camper-row-name">${c.first_name} ${c.last_name}</div><div class="camper-row-email">${c.email||'No email'}</div></div><div><button class="btn-icon" title="Delete" onclick="deleteCamper('${c.id}')">✕</button></div></div>`).join('');}
+function renderCampersList(){const l=document.getElementById('campersList');const q=(document.getElementById('camperSearch')?.value||'').toLowerCase().trim();const sorted=[...campers].sort((a,b)=>(a.last_name+a.first_name).toLowerCase().localeCompare((b.last_name+b.first_name).toLowerCase()));const filtered=q?sorted.filter(c=>(c.first_name+' '+c.last_name+' '+(c.email||'')).toLowerCase().includes(q)):sorted;if(!filtered.length){l.innerHTML='<div class="empty-state"><div class="empty-state-icon">🏀</div><div class="empty-state-text">'+(campers.length?'No campers match your search':'No campers yet')+'</div></div>';return;}l.innerHTML=filtered.map(c=>`<div class="camper-row"><div><div class="camper-row-name">${c.last_name}, ${c.first_name}</div><div class="camper-row-email">${c.email||'No email'}</div></div><div><button class="btn-icon" title="Delete" onclick="deleteCamper('${c.id}')">✕</button></div></div>`).join('');}
 function openAddCamper(){document.getElementById('addCamperModal').classList.add('active');document.getElementById('newCamperFirst').value='';document.getElementById('newCamperLast').value='';document.getElementById('newCamperEmail').value='';}
 async function saveCamper(){const f=document.getElementById('newCamperFirst').value.trim(),l=document.getElementById('newCamperLast').value.trim(),e=document.getElementById('newCamperEmail').value.trim();if(!f||!l){showToast('Name required',true);return;}try{await supaFetch('campers','POST',{first_name:f,last_name:l,email:e||null});closeModal('addCamperModal');showToast('Camper added!');await loadAllData();}catch(er){showToast('Error',true);}}
 async function deleteCamper(id){if(!confirm('Delete camper and evaluations?'))return;try{await supaFetch('evaluations','DELETE',null,`?camper_id=eq.${id}`);await supaFetch('campers','DELETE',null,`?id=eq.${id}`);showToast('Removed');await loadAllData();}catch(e){showToast('Error',true);}}
+async function deleteAllCampers(){if(!campers.length){showToast('No campers to delete',true);return;}if(!confirm(`Delete ALL ${campers.length} campers and their evaluations? This cannot be undone.`))return;try{await supaFetch('evaluations','DELETE',null,'?id=neq.00000000-0000-0000-0000-000000000000');await supaFetch('campers','DELETE',null,'?id=neq.00000000-0000-0000-0000-000000000000');showToast('All campers deleted');await loadAllData();}catch(e){showToast('Error',true);}}
 
 // CLINICIANS
 function renderCliniciansList(){const l=document.getElementById('cliniciansList');if(!clinicians.length){l.innerHTML='<div class="empty-state"><div class="empty-state-icon">🏁</div><div class="empty-state-text">No clinicians yet</div></div>';return;}l.innerHTML=clinicians.map(c=>`<div class="camper-row"><div><div class="camper-row-name">${c.name}</div></div><div><button class="btn-icon" title="Delete" onclick="deleteClinician('${c.id}')">✕</button></div></div>`).join('');}
 function openAddClinician(){document.getElementById('addClinicianModal').classList.add('active');document.getElementById('newClinicianName').value='';}
 async function saveClinician(){const n=document.getElementById('newClinicianName').value.trim();if(!n){showToast('Name required',true);return;}try{await supaFetch('clinicians','POST',{name:n});closeModal('addClinicianModal');showToast('Clinician added!');await loadAllData();}catch(e){showToast('Error',true);}}
 async function deleteClinician(id){if(!confirm('Delete this clinician?'))return;try{await supaFetch('clinicians','DELETE',null,`?id=eq.${id}`);showToast('Removed');await loadAllData();}catch(e){showToast('Error',true);}}
+async function deleteAllClinicians(){if(!clinicians.length){showToast('No clinicians to delete',true);return;}if(!confirm(`Delete ALL ${clinicians.length} clinicians? This cannot be undone.`))return;try{await supaFetch('clinicians','DELETE',null,'?id=neq.00000000-0000-0000-0000-000000000000');showToast('All clinicians deleted');await loadAllData();}catch(e){showToast('Error',true);}}
 
 // CSV UPLOAD
 function openCSVUpload(){csvParsedData=[];document.getElementById('csvModal').classList.add('active');document.getElementById('csvPreview').style.display='none';document.getElementById('csvUploadBtn').style.display='none';document.getElementById('csvFileInput').value='';}
