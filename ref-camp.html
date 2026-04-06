@@ -186,7 +186,7 @@ select.form-select:focus{outline:none;border-color:var(--orange)}
       <button class="btn btn-outline btn-sm" onclick="openCSVUpload()" style="flex:1;min-width:130px">&#128196; Mass Upload</button>
       <button class="btn btn-outline btn-sm" onclick="deleteAllCampers()" style="flex:1;min-width:130px;border-color:var(--red);color:var(--red)">&#128465; Delete All</button>
     </div>
-    <input type="search" class="form-input" id="camperSearch" placeholder="Search campers..." oninput="renderCampersList()" style="margin-bottom:1rem">
+    <input type="search" class="form-input" id="camperSearch" placeholder="&#128269; Search by name or email..." oninput="renderCampersList()" autocomplete="off" style="margin-bottom:1rem">
     <div id="campersList"></div>
   </div>
 
@@ -238,7 +238,7 @@ function logout(){document.getElementById('loginScreen').style.display='flex';do
 // DATA
 async function loadAllData(){try{campers=await supaFetch('campers','GET',null,'?order=last_name.asc')||[];evaluations=await supaFetch('evaluations','GET',null,'?order=created_at.desc')||[];clinicians=await supaFetch('clinicians','GET',null,'?order=name.asc')||[];}catch(e){console.error(e);}populateCamperSelect();populateClinicianSelect();renderCampersList();renderCliniciansList();renderRankings();buildEvalForm();}
 
-function populateCamperSelect(){const s=document.getElementById('evalCamperSelect');s.innerHTML='<option value="">— Choose a camper —</option>';campers.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=`${c.first_name} ${c.last_name}`;s.appendChild(o);});}
+function populateCamperSelect(){const s=document.getElementById('evalCamperSelect');s.innerHTML='<option value="">— Choose a camper —</option>';const sorted=[...campers].sort((a,b)=>(a.last_name+a.first_name).toLowerCase().localeCompare((b.last_name+b.first_name).toLowerCase()));sorted.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=`${c.last_name}, ${c.first_name}`;s.appendChild(o);});}
 function populateClinicianSelect(){const s=document.getElementById('evalClinician');s.innerHTML='<option value="">— Select clinician —</option>';clinicians.forEach(c=>{const o=document.createElement('option');o.value=c.name;o.textContent=c.name;s.appendChild(o);});}
 
 function onCamperSelected(){const cid=document.getElementById('evalCamperSelect').value;const form=document.getElementById('evalForm');if(!cid){form.style.display='none';return;}form.style.display='block';buildEvalForm();resetEvalForm();}
@@ -374,7 +374,7 @@ async function uploadCSVCampers(){const btn=document.getElementById('csvUploadBt
 
 // UTILS
 function closeModal(id){document.getElementById(id).classList.remove('active');}
-function switchTab(tab){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.textContent.toLowerCase().trim()===tab));document.querySelectorAll('.tab-content').forEach(el=>el.classList.toggle('active',el.id===`tab-${tab}`));if(tab==='rankings')renderRankings();}
+function switchTab(tab){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.textContent.toLowerCase().trim()===tab));document.querySelectorAll('.tab-content').forEach(el=>el.classList.toggle('active',el.id===`tab-${tab}`));if(tab==='rankings')renderRankings();if(tab==='campers'){const s=document.getElementById('camperSearch');if(s)s.value='';renderCampersList();}}
 function showToast(msg,err=false){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast ${err?'error':''} show`;setTimeout(()=>t.classList.remove('show'),2500);}
 </script>
 </body>
